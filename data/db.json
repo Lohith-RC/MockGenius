@@ -1,0 +1,293 @@
+{
+  "users": [
+    {
+      "id": "admin-1",
+      "email": "admin@interviewai.com",
+      "name": "Lohith",
+      "picture": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120",
+      "role": "admin",
+      "completedProfile": true
+    },
+    {
+      "id": "demo-student-1",
+      "email": "student@interviewai.com",
+      "name": "Trupti",
+      "picture": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=120",
+      "role": "student",
+      "branch": "Computer Science",
+      "skills": [
+        "React",
+        "JavaScript",
+        "SQL",
+        "TypeScript",
+        "Python",
+        "Node.js"
+      ],
+      "projects": [
+        "InterviewAI Platform",
+        "Weather App",
+        "E-Commerce Dashboard"
+      ],
+      "targetRole": "Full Stack Engineer",
+      "experienceLevel": "Entry Level",
+      "completedProfile": true
+    },
+    {
+      "id": "usr-110523722880783682987",
+      "email": "lohithrc.cs23@gmail.com",
+      "name": "Lohith R C",
+      "picture": "https://lh3.googleusercontent.com/a/ACg8ocLUH6E7enBQ7iCj_kdpl0olZ3mbDSfiNXnxLX9plnzxvMtPzAY=s96-c",
+      "role": "student",
+      "completedProfile": true,
+      "skills": [
+        "HTML/CSS",
+        "JavaScript",
+        "React",
+        "TypeScript",
+        "Tailwind CSS",
+        "Node.js",
+        "Express",
+        "SQL"
+      ],
+      "branch": "Computer Science",
+      "projects": [
+        "123"
+      ],
+      "targetRole": "Full Stack Engineer",
+      "experienceLevel": "Entry Level"
+    }
+  ],
+  "resumes": [
+    {
+      "id": "res-1",
+      "userId": "demo-student-1",
+      "fileName": "Trupti_CS_Resume.pdf",
+      "uploadedAt": "2026-07-08T17:51:03.802Z",
+      "atsScore": 78,
+      "skills": [
+        "React",
+        "JavaScript",
+        "SQL",
+        "TypeScript",
+        "Node.js",
+        "HTML/CSS"
+      ],
+      "missingSections": [
+        "Certifications",
+        "Summary Statement"
+      ],
+      "suggestions": [
+        "Add a brief Summary section at the top of your resume highlighting your core accomplishments.",
+        "Include relevant academic/industry certifications to strengthen your profile.",
+        "Use more impact-driven bullet points starting with action verbs (e.g., \"Led\", \"Optimized\", \"Engineered\")."
+      ],
+      "grammarIssues": [
+        "Found inconsistent capitalization in job titles (\"Full-stack\" vs \"Full Stack\")."
+      ],
+      "keywords": [
+        {
+          "keyword": "React",
+          "match": true
+        },
+        {
+          "keyword": "Node.js",
+          "match": false
+        },
+        {
+          "keyword": "Docker",
+          "match": false
+        },
+        {
+          "keyword": "RESTful APIs",
+          "match": true
+        },
+        {
+          "keyword": "PostgreSQL",
+          "match": false
+        }
+      ],
+      "improvementsToAdd": [
+        "Node.js",
+        "PostgreSQL",
+        "Docker",
+        "AWS"
+      ],
+      "improvementsToRemove": [
+        "Irrelevant hobbies",
+        "High school GPA (if college senior)"
+      ]
+    },
+    {
+      "id": "sim-res-n9tqe902d",
+      "userId": "usr-110523722880783682987",
+      "fileName": "lohith resume.pdf",
+      "uploadedAt": "2026-07-15T09:10:41.041Z",
+      "simulated": true,
+      "atsScore": 95,
+      "skills": [
+        "HTML/CSS",
+        "JavaScript",
+        "React",
+        "TypeScript",
+        "Tailwind CSS",
+        "Node.js",
+        "Express",
+        "SQL",
+        "Git"
+      ],
+      "missingSections": [
+        "Professional Summary",
+        "Industry Certifications",
+        "Contact Address"
+      ],
+      "suggestions": [
+        "Add a brief Professional Summary section right at the top of your resume stating your engineering discipline and career alignment.",
+        "Improve bullet point structure by using the action-verb-first rule (e.g., replace \"Was responsible for coding\" with \"Engineered and refactored core interfaces\").",
+        "Incorporate specific metrics and business results into project bullet points (e.g., \"reducing database call latency by 12%\").",
+        "Add a dedicated Certifications or Coursera/Udemy section if you have external technical credentials."
+      ],
+      "grammarIssues": [
+        "Inconsistent formatting detected for dates (some sections use \"Jan 2026\" while others use \"01/2026\").",
+        "Ensure proper title case is utilized for all technical headers."
+      ],
+      "keywords": [
+        {
+          "keyword": "React.js",
+          "match": true
+        },
+        {
+          "keyword": "Node.js / Express",
+          "match": true
+        },
+        {
+          "keyword": "RESTful API Engineering",
+          "match": true
+        },
+        {
+          "keyword": "CI/CD Pipelines (Docker, Git)",
+          "match": true
+        },
+        {
+          "keyword": "Relational Database (SQL/Postgres)",
+          "match": true
+        }
+      ],
+      "improvementsToAdd": [
+        "Cloud deployment context (AWS / Google Cloud / Vercel)",
+        "TypeScript declaration files and type safety practices",
+        "Relational schema design or Object Relational Mapping (ORM) mentions"
+      ],
+      "improvementsToRemove": [
+        "Outdated high-school accomplishments and grade cards",
+        "Extraneous hobbies that do not relate to engineering competencies"
+      ]
+    }
+  ],
+  "interviews": [
+    {
+      "id": "int-1",
+      "userId": "demo-student-1",
+      "jobRole": "Full Stack Engineer",
+      "branch": "Computer Science",
+      "skills": [
+        "React",
+        "TypeScript",
+        "SQL"
+      ],
+      "experienceLevel": "Entry Level",
+      "status": "completed",
+      "questions": [
+        "Explain the virtual DOM and how React renders changes.",
+        "What is the difference between SQL and NoSQL databases?",
+        "Tell me about a challenging technical project you worked on."
+      ],
+      "currentQuestionIndex": 3,
+      "answers": [
+        {
+          "question": "Explain the virtual DOM and how React renders changes.",
+          "answer": "React creates an in-memory lightweight representation of the real DOM. When state updates, React builds a new virtual DOM tree, compares it with the previous one (diffing), and calculates the minimal updates to apply to the real DOM (reconciliation).",
+          "evaluation": {
+            "score": 9,
+            "feedback": "Excellent answer. You correctly covered both the diffing process and reconciliation.",
+            "technicalScore": 9,
+            "communicationScore": 9,
+            "confidenceScore": 8,
+            "grammar": "Perfect.",
+            "clarity": "Highly clear."
+          }
+        },
+        {
+          "question": "What is the difference between SQL and NoSQL databases?",
+          "answer": "SQL databases are relational, table-based, with fixed schemas and support ACID compliance. NoSQL are non-relational, document or key-value based, with dynamic schemas, designed for horizontal scalability.",
+          "evaluation": {
+            "score": 8,
+            "feedback": "Solid explanation of SQL vs NoSQL, clearly stating schemas and scalability models.",
+            "technicalScore": 8,
+            "communicationScore": 8,
+            "confidenceScore": 8,
+            "grammar": "Excellent.",
+            "clarity": "Clear."
+          }
+        },
+        {
+          "question": "Tell me about a challenging technical project you worked on.",
+          "answer": "I worked on a portfolio project where I had to sync state across views. It was challenging because I had prop drilling, so I implemented React Context to solve the complex prop propagation.",
+          "evaluation": {
+            "score": 7,
+            "feedback": "Good description of React Context. Try using the STAR method (Situation, Task, Action, Result) to format your story more impactfully next time.",
+            "technicalScore": 7,
+            "communicationScore": 8,
+            "confidenceScore": 7,
+            "grammar": "Minor phrasing issues.",
+            "clarity": "Understandable."
+          }
+        }
+      ],
+      "overallScore": 80,
+      "technicalScore": 80,
+      "communicationScore": 83,
+      "confidenceScore": 77,
+      "feedbackText": "Great overall performance Trupti! Your React and database theory is very strong. Continue working on structuring your behavioral/project-based answers using action-oriented frameworks like STAR.",
+      "suggestions": [
+        "Use the STAR framework for project-based questions.",
+        "Add more concrete metrics when explaining what you built (e.g., \"achieved 15% improvement\").",
+        "Slightly slow down your speaking pace to sound more composed and confident."
+      ],
+      "createdAt": "2026-07-09T17:51:03.802Z"
+    }
+  ],
+  "templates": [
+    {
+      "id": "template-1",
+      "name": "Standard ATS Minimalist",
+      "description": "A clean, highly parseable single-column format recommended for software engineering and technical roles.",
+      "downloadCount": 142,
+      "fileContent": "# [Your Name]\n[City, State] | [Phone Number] | [Email] | [LinkedIn URL] | [GitHub URL]\n\n## EDUCATION\n**[University Name]** | [Degree, e.g., B.S. in Computer Science]\n*Graduation Date: [Month, Year] | GPA: [X.X/4.0 or percentage]*\n\n## TECHNICAL SKILLS\n* **Languages:** Java, Python, C++, SQL, TypeScript, JavaScript\n* **Frameworks/Libraries:** Spring Boot, React, Node.js, Express, Tailwind CSS\n* **Developer Tools:** Git, Docker, AWS, Google Cloud, PostgreSQL, MongoDB\n\n## WORK EXPERIENCE\n**[Company Name]** | [Job Title, e.g., Software Engineering Intern]\n*[Month, Year] – [Month, Year] | [City, State]*\n* Designed and implemented dynamic web interfaces using React and Tailwind CSS, increasing page load performance by 15%.\n* Developed microservices with Spring Boot and integrated PostgreSQL database, reducing API latency by 20%.\n* Collaborated in an agile team of 5 engineers to deliver critical core features under strict timelines.\n\n## PROJECTS\n**[Project Name (e.g., InterviewAI Platform)]** | *React, Express, Tailwind, Gemini API*\n*[Month, Year] – [Month, Year]*\n* Engineered an AI-driven interview preparation system with real-time feedback and dynamic mock questionnaires.\n* Optimized data persistence utilizing structured file arrays, reducing runtime dependencies by 100%.\n"
+    },
+    {
+      "id": "template-2",
+      "name": "Professional Modern Two-Column",
+      "description": "A stylish layout with a sidebar highlighting technical competencies, suited for frontend and full-stack developers.",
+      "downloadCount": 98,
+      "fileContent": "# [Your Name] - Full Stack Developer\n[Email] • [Phone] • [Website] • [GitHub]\n\n## SUMMARY\nMotivated Computer Science graduate with hands-on experience in full-stack application development. Skilled in building resilient, server-side APIs and engaging, interactive browser interfaces.\n\n## KEY PROJECTS\n### [Project 1 Name] - *Spring Boot, Angular, PostgreSQL*\n* Designed a relational schema for robust transaction tracking with ACID compliance.\n* Built microservice endpoints with custom token-based filter authentication.\n\n### [Project 2 Name] - *React, Tailwind CSS, Firebase*\n* Constructed a collaborative canvas dashboard utilizing real-time event-driven updates.\n"
+    },
+    {
+      "id": "template-3",
+      "name": "Executive Tech Lead Format",
+      "description": "A comprehensive layout that emphasizes professional experience, projects, and systems architecture skills.",
+      "downloadCount": 65,
+      "fileContent": "# [Your Name]\n[Contact Details] • [Portfolio Link] • [GitHub]\n\n## PROFESSIONAL EXPERIENCE\n**Junior Software Engineer** | [Tech Corp]\n*[Month, Year] - Present*\n* Spearheaded transition of legacy monolithic endpoints to scalable RESTful services, servicing 10k+ daily queries.\n* Maintained CI/CD pipelines to guarantee seamless deployments with zero-downtime rollback controls.\n"
+    }
+  ],
+  "feedback": [
+    {
+      "id": "feed-1",
+      "userId": "demo-student-1",
+      "userName": "Trupti",
+      "category": "interview",
+      "rating": 5,
+      "comment": "The AI feedback after my mock interview was incredibly detailed! It felt like talking to a real technical interviewer.",
+      "createdAt": "2026-07-09T17:51:03.802Z"
+    }
+  ]
+}
