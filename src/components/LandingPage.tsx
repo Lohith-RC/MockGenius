@@ -1,37 +1,232 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight,
   Mic,
+  MicOff,
   Volume2,
+  VolumeX,
   Play,
   Terminal,
   Code2,
-  FileText,
-  Activity
+  Activity,
+  RotateCcw,
+  Sparkles,
+  CheckCircle2,
+  Layers
 } from 'lucide-react';
 import { motion, useScroll, useTransform, useSpring } from 'motion/react';
 import { User as UserType } from '../types.js';
 import { api } from '../lib/api.js';
+import { sound } from '../lib/sound.js';
 
 interface LandingPageProps {
   onLoginSuccess: (user: UserType) => void;
 }
 
+type RoleTrack = 'sysdesign' | 'frontend' | 'backend' | 'behavioral';
+
+interface QuestionScenario {
+  id: RoleTrack;
+  label: string;
+  role: string;
+  question: string;
+  sampleAnswer: string;
+  wpm: number;
+  score: number;
+  goodPoint: string;
+  improvePoint: string;
+}
+
+const SCENARIOS: Record<RoleTrack, QuestionScenario> = {
+  sysdesign: {
+    id: 'sysdesign',
+    label: 'System Design',
+    role: 'Staff Infrastructure Round',
+    question: 'How would you handle cache invalidation across 50 distributed edge nodes when high-frequency database writes occur?',
+    sampleAnswer: 'I would use a Cache-Aside pattern combined with Change Data Capture (CDC) via Kafka. On database commit, an async event broadcasts to edge nodes with a small TTL buffer, avoiding synchronous write blocking while bounding eventual consistency to under 80ms.',
+    wpm: 138,
+    score: 94,
+    goodPoint: 'Immediately addressed asynchronous CDC decoupling instead of naive dual-writes.',
+    improvePoint: 'Consider quantifying what happens if Kafka partition consumer lag spikes.'
+  },
+  frontend: {
+    id: 'frontend',
+    label: 'Frontend & UI',
+    role: 'Senior React Architect Round',
+    question: 'How do you prevent UI layout jank and frame drops when rendering an infinite feed of 100,000 mixed-height media cards?',
+    sampleAnswer: 'I would implement a dynamic windowing list using intersection observers, estimating item heights with a resize observer cache. By unmounting offscreen DOM nodes and keeping paint operations within 16ms animation frames, memory and reflow costs remain constant regardless of list depth.',
+    wpm: 144,
+    score: 96,
+    goodPoint: 'Focused on constant DOM memory foot-print and RAF paint budgets.',
+    improvePoint: 'Mention keyboard accessibility and scroll restoration strategies.'
+  },
+  backend: {
+    id: 'backend',
+    label: 'Backend & APIs',
+    role: 'Distributed Services Round',
+    question: 'A critical downstream payment gateway is experiencing intermittent 504 timeouts. How do you prevent cascade failure in your API tier?',
+    sampleAnswer: 'I would deploy a circuit breaker pattern with exponential backoff and jitter. Once error rates breach 15%, the circuit trips to immediately fail-fast or route to an async retry queue, preventing database connection pool exhaustion in our upstream web tier.',
+    wpm: 132,
+    score: 92,
+    goodPoint: 'Used jittered backoff to prevent thundering herd retry storms.',
+    improvePoint: 'Detail whether idempotent request tokens are enforced on retries.'
+  },
+  behavioral: {
+    id: 'behavioral',
+    label: 'Leadership',
+    role: 'Engineering Culture Round',
+    question: 'Tell me about a disagreement with a product manager over shipping a feature with known architectural debt.',
+    sampleAnswer: 'We had a hard deadline for Q3 launch, but shipping without schema versioning risked data migration locks later. I sat down with the PM, mapped the rollback cost in dollar terms, and proposed an MVP compromise: ship the core flow now with an automated migration guardrail, scheduling the full refactor in the very next sprint.',
+    wpm: 136,
+    score: 95,
+    goodPoint: 'Translated technical risk into business and revenue impacts without being defensive.',
+    improvePoint: 'Share how you followed up post-launch to ensure the refactor happened.'
+  }
+};
+
 export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
   const [loading, setLoading] = useState<'google' | 'student' | 'admin' | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [oauthUrlInstructions, setOauthUrlInstructions] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dialogue' | 'feedback'>('dialogue');
+  const [activeTrack, setActiveTrack] = useState<RoleTrack>('sysdesign');
+  const [viewMode, setViewMode] = useState<'dialogue' | 'feedback'>('dialogue');
+  const [isMuted, setIsMuted] = useState(sound.isMuted());
 
-  // Scroll-driven animation physics
+  // Interactive Live Mic Testing on Landing Page
+  const [isRecording, setIsRecording] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [computedWpm, setComputedWpm] = useState<number | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Scroll-driven animation transforms
   const { scrollYProgress } = useScroll();
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
-
-  // Scroll-linked transforms
   const heroScale = useTransform(smoothProgress, [0, 0.25], [1, 0.97]);
   const heroOpacity = useTransform(smoothProgress, [0, 0.3], [1, 0.85]);
   const previewScale = useTransform(smoothProgress, [0.05, 0.35], [0.95, 1]);
-  const previewY = useTransform(smoothProgress, [0.05, 0.35], [40, 0]);
+  const previewY = useTransform(smoothProgress, [0.05, 0.35], [35, 0]);
+
+  // Mouse spotlight coordinates
+  const previewRef = useRef<HTMLDivElement>(null);
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!previewRef.current) return;
+    const rect = previewRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    previewRef.current.style.setProperty('--mouse-x', `${x}px`);
+    previewRef.current.style.setProperty('--mouse-y', `${y}px`);
+  };
+
+  // Recording elapsed timer
+  useEffect(() => {
+    let interval: any;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  // Handle live Web Speech test on Landing Page
+  const handleToggleLiveMic = () => {
+    sound.playClick(isRecording ? 800 : 1200);
+
+    if (isRecording) {
+      // Stop recording
+      setIsRecording(false);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+      sound.playChime();
+      const words = liveTranscript.trim().split(/\s+/).filter(Boolean).length;
+      const mins = Math.max(recordingSeconds, 2) / 60;
+      setComputedWpm(Math.round(words / mins));
+      return;
+    }
+
+    // Check Speech Recognition support
+    const SpeechAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechAPI) {
+      // Fallback simulation
+      handleSimulateVoice();
+      return;
+    }
+
+    try {
+      const recognition = new SpeechAPI();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      setLiveTranscript('');
+      setRecordingSeconds(0);
+      setComputedWpm(null);
+      setIsRecording(true);
+      sound.playMicStart();
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+        setLiveTranscript(transcript);
+      };
+
+      recognition.onerror = () => {
+        setIsRecording(false);
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch {
+      handleSimulateVoice();
+    }
+  };
+
+  // Fallback simulator for users without a working microphone
+  const handleSimulateVoice = () => {
+    setIsRecording(true);
+    setLiveTranscript('');
+    setRecordingSeconds(0);
+    setComputedWpm(null);
+    sound.playMicStart();
+
+    const text = SCENARIOS[activeTrack].sampleAnswer;
+    const words = text.split(' ');
+    let currentIdx = 0;
+
+    const interval = setInterval(() => {
+      currentIdx += 4;
+      if (currentIdx >= words.length) {
+        clearInterval(interval);
+        setLiveTranscript(text);
+        setIsRecording(false);
+        setComputedWpm(SCENARIOS[activeTrack].wpm);
+        sound.playChime();
+      } else {
+        setLiveTranscript(words.slice(0, currentIdx).join(' '));
+      }
+    }, 200);
+  };
+
+  const handleSelectTrack = (track: RoleTrack) => {
+    sound.playClick(1000);
+    setActiveTrack(track);
+    setLiveTranscript('');
+    setComputedWpm(null);
+  };
+
+  const handleToggleSound = () => {
+    const muted = sound.toggleMute();
+    setIsMuted(muted);
+    if (!muted) sound.playClick(1200);
+  };
 
   // Listen for login success event from popup window
   useEffect(() => {
@@ -60,6 +255,7 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
 
   // Handle Google OAuth flow
   const handleGoogleLogin = async () => {
+    sound.playClick();
     setLoading('google');
     setOauthError(null);
     setOauthUrlInstructions(null);
@@ -98,6 +294,7 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
 
   // Handle Demo login
   const handleDemoLogin = async (role: 'student' | 'admin') => {
+    sound.playClick();
     setLoading(role);
     try {
       const response = await api.post('/api/auth/demo', { role });
@@ -116,15 +313,19 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
     }
   };
 
+  const currentScenario = SCENARIOS[activeTrack];
+  const activeAnswer = liveTranscript || currentScenario.sampleAnswer;
+  const activeWpm = computedWpm || currentScenario.wpm;
+
   return (
     <div className="min-h-[100dvh] bg-[#09090b] text-[#f4f4f5] font-sans selection:bg-zinc-800 selection:text-white flex flex-col relative overflow-x-hidden">
-      {/* Scroll-Driven Top Progress Line */}
+      {/* Scroll-Driven Top Progress Bar */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-[2px] bg-zinc-200 origin-left z-50 pointer-events-none"
         style={{ scaleX: smoothProgress }}
       />
 
-      {/* Minimal Sticky Nav */}
+      {/* Sticky Minimal Navigation Header */}
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-[#09090b]/85 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -132,11 +333,21 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
               MockGenius
             </span>
             <span className="hidden sm:inline-block text-[11px] text-zinc-500 font-mono">
-              / voice interview engine
+              / conversational interview lab
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Tactile Audio Mute Toggle */}
+            <button
+              onClick={handleToggleSound}
+              className="p-1.5 rounded-md border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200 text-xs transition"
+              title={isMuted ? 'Unmute UI sounds' : 'Mute UI sounds'}
+              aria-label="Toggle UI Sound Effects"
+            >
+              {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-zinc-300" />}
+            </button>
+
             <button
               onClick={() => handleDemoLogin('student')}
               disabled={loading !== null}
@@ -147,64 +358,42 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
             <button
               onClick={handleGoogleLogin}
               disabled={loading !== null}
-              className="text-xs font-semibold bg-zinc-100 hover:bg-white text-zinc-900 px-4 py-2 rounded-md transition active:scale-[0.98] shadow-sm flex items-center gap-1.5"
+              className="text-xs font-semibold bg-zinc-100 hover:bg-white text-zinc-900 px-4 py-2 rounded-md transition active:scale-[0.98] shadow-sm flex items-center gap-1.5 font-heading"
             >
               {loading === 'google' ? 'Connecting...' : 'Sign in'}
-              <ArrowRight className="w-3 h-3 text-zinc-900" />
+              <ArrowRight className="w-3.5 h-3.5 text-zinc-900" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content with Scroll-Driven Scaling */}
+      {/* Main Content Hero */}
       <main className="flex-1">
-        {/* Hero Section */}
         <motion.section
           style={{ scale: heroScale, opacity: heroOpacity }}
-          className="pt-24 pb-16 md:pt-32 md:pb-20 px-6 max-w-4xl mx-auto text-center will-change-transform"
+          className="pt-24 pb-12 md:pt-32 md:pb-16 px-6 max-w-4xl mx-auto text-center will-change-transform"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/60 text-zinc-400 text-xs font-mono mb-8"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>zero fluff • instant practice</span>
-          </motion.div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/60 text-zinc-400 text-xs font-mono mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Interactive Simulator • Try Your Voice Below</span>
+          </div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="font-heading text-4xl sm:text-6xl md:text-7xl font-bold tracking-[-0.04em] text-zinc-100 leading-[1.08]"
-          >
+          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl font-bold tracking-[-0.04em] text-zinc-100 leading-[1.08]">
             Talk through tech interviews <br className="hidden sm:inline" />
             <span className="text-zinc-500 font-medium">before the stakes are real.</span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed"
-          >
-            Real conversational questions with an AI that listens to your voice, asks follow-ups, and gives you instant feedback on your pacing, structure, and depth.
-          </motion.p>
+          <p className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
+            Pick a track, answer out loud into your mic, and see your live pacing, verbal filler habits, and technical depth in real time.
+          </p>
 
-          {/* Action CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-8 flex flex-wrap items-center justify-center gap-3"
-          >
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={handleGoogleLogin}
               disabled={loading !== null}
               className="bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm px-6 py-3 rounded-lg transition active:scale-[0.98] shadow-sm flex items-center gap-2 font-heading"
             >
-              <span>{loading === 'google' ? 'Connecting to Google...' : 'Start practicing with Google'}</span>
+              <span>{loading === 'google' ? 'Connecting to Google...' : 'Get started with Google'}</span>
               <ArrowRight className="w-4 h-4 text-zinc-900" />
             </button>
 
@@ -213,16 +402,15 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
               disabled={loading !== null}
               className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-900 text-zinc-300 font-medium text-sm px-5 py-3 rounded-lg transition active:scale-[0.98] font-heading"
             >
-              {loading === 'student' ? 'Launching...' : 'Try 2-minute demo'}
+              {loading === 'student' ? 'Launching...' : 'Explore Candidate Sandbox'}
             </button>
-          </motion.div>
+          </div>
 
-          {/* OAuth Error Notification */}
           {oauthError && (
-            <div className="mt-6 p-4 rounded-lg bg-red-950/30 border border-red-900/50 text-red-300 text-xs text-left max-w-md mx-auto">
+            <div className="mt-6 p-4 rounded-lg bg-red-950/30 border border-red-900/50 text-red-300 text-xs text-left max-w-md mx-auto font-mono">
               <p className="font-semibold">{oauthError}</p>
               {oauthUrlInstructions && (
-                <pre className="mt-2 p-2 bg-black/60 rounded font-mono text-[10px] whitespace-pre-wrap text-zinc-400">
+                <pre className="mt-2 p-2 bg-black/60 rounded text-[10px] whitespace-pre-wrap text-zinc-400">
                   {oauthUrlInstructions}
                 </pre>
               )}
@@ -230,48 +418,87 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
           )}
         </motion.section>
 
-        {/* Scroll-Driven Interactive Product Window */}
+        {/* ULTRA-ENGAGING INTERACTIVE HERO PREVIEW CARD */}
         <motion.section
           style={{ scale: previewScale, y: previewY }}
-          className="px-6 max-w-4xl mx-auto mb-24 will-change-transform"
+          className="px-4 sm:px-6 max-w-4xl mx-auto mb-24 will-change-transform"
         >
-          <div className="text-left border border-zinc-800 bg-[#121215] rounded-xl overflow-hidden shadow-2xl">
+          {/* Interactive Role Switcher Filter Bar */}
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3 px-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {(Object.keys(SCENARIOS) as RoleTrack[]).map((track) => (
+                <button
+                  key={track}
+                  onClick={() => handleSelectTrack(track)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-heading font-medium transition ${
+                    activeTrack === track
+                      ? 'bg-zinc-100 text-zinc-900 shadow-sm'
+                      : 'border border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {SCENARIOS[track].label}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Live Mic Action Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleLiveMic}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition border ${
+                  isRecording
+                    ? 'bg-red-500/10 border-red-500/30 text-red-400 animate-pulse'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white'
+                }`}
+              >
+                {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-emerald-400" />}
+                <span>{isRecording ? `Stop Recording (${recordingSeconds}s)` : 'Test Your Mic Live'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mouse-Tracking Spotlight Window */}
+          <div
+            ref={previewRef}
+            onMouseMove={handleMouseMove}
+            className="spotlight-interactive text-left border border-zinc-800 bg-[#121215] rounded-xl overflow-hidden shadow-2xl"
+          >
             {/* macOS Chrome Header */}
-            <div className="px-5 py-3.5 border-b border-zinc-800/80 bg-zinc-950/60 flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-zinc-800/80 bg-zinc-950/60 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                 <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                 <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
                 <span className="ml-2 text-xs font-mono text-zinc-400 flex items-center gap-1.5">
                   <Terminal className="w-3.5 h-3.5 text-zinc-500" />
-                  round_01 // system_design_redis_cache
+                  {currentScenario.role}
                 </span>
               </div>
 
-              {/* View Switcher */}
+              {/* View Toggle */}
               <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-md border border-zinc-800 text-[11px] font-mono">
                 <button
-                  onClick={() => setActiveTab('dialogue')}
-                  className={`px-2.5 py-1 rounded transition ${
-                    activeTab === 'dialogue' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                  onClick={() => { sound.playClick(900); setViewMode('dialogue'); }}
+                  className={`px-2.5 py-0.5 rounded transition ${
+                    viewMode === 'dialogue' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  live_dialogue
+                  dialogue
                 </button>
                 <button
-                  onClick={() => setActiveTab('feedback')}
-                  className={`px-2.5 py-1 rounded transition ${
-                    activeTab === 'feedback' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                  onClick={() => { sound.playClick(900); setViewMode('feedback'); }}
+                  className={`px-2.5 py-0.5 rounded transition ${
+                    viewMode === 'feedback' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  feedback_report
+                  feedback
                 </button>
               </div>
             </div>
 
-            {/* Tabbed Content Area */}
+            {/* Interactive Content */}
             <div className="p-6 sm:p-8">
-              {activeTab === 'dialogue' ? (
+              {viewMode === 'dialogue' ? (
                 <div className="space-y-6">
                   {/* Spoken Question */}
                   <div className="flex gap-4">
@@ -281,66 +508,108 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
                     <div className="space-y-1">
                       <span className="text-xs font-mono text-zinc-500">AI Interviewer</span>
                       <p className="text-sm sm:text-base text-zinc-100 font-medium leading-relaxed font-heading">
-                        "How would you handle cache invalidation across distributed edge nodes when high-frequency writes occur?"
+                        "{currentScenario.question}"
                       </p>
                     </div>
                   </div>
 
-                  {/* Candidate Spoken Answer */}
+                  {/* Candidate Spoken Response */}
                   <div className="flex gap-4 pl-4 sm:pl-8 border-l border-zinc-800">
-                    <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-emerald-400">
+                    <div className={`w-8 h-8 rounded-md border flex items-center justify-center flex-shrink-0 transition ${
+                      isRecording ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-zinc-900 border-zinc-700 text-emerald-400'
+                    }`}>
                       <Mic className="w-4 h-4" />
                     </div>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-zinc-400">Your Voice Stream</span>
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-xs font-mono text-zinc-400">
+                          {isRecording ? 'Listening live to your microphone...' : 'Spoken Response Transcript'}
+                        </span>
                         <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">
-                          138 wpm • steady
+                          {activeWpm} wpm • {activeWpm >= 120 && activeWpm <= 155 ? 'optimal cadence' : 'measured'}
                         </span>
                       </div>
-                      <p className="text-xs sm:text-sm text-zinc-300 font-mono leading-relaxed">
-                        "I'd implement a Cache-Aside pattern paired with an event-driven pub/sub bus like Kafka. When a write hits the primary database, a CDC event fires to invalidate the distributed edge caches asynchronously..."
+                      <p className="text-xs sm:text-sm text-zinc-300 font-mono leading-relaxed min-h-[50px]">
+                        "{activeAnswer}"
+                        {isRecording && <span className="inline-block w-1.5 h-3.5 ml-1 bg-emerald-400 animate-pulse align-middle" />}
                       </p>
                     </div>
                   </div>
 
-                  {/* Status Strip */}
-                  <div className="pt-2 flex items-center justify-between text-xs text-zinc-500 font-mono border-t border-zinc-800/80">
-                    <span>Fillers: 0 detected</span>
-                    <span>Elapsed: 01:18</span>
-                    <span className="text-emerald-400">Audio Ingestion: 48kHz</span>
+                  {/* Status Strip & Live Mic Controls */}
+                  <div className="pt-2 flex items-center justify-between flex-wrap gap-2 text-xs text-zinc-500 font-mono border-t border-zinc-800/80">
+                    <div className="flex items-center gap-3">
+                      <span>Fillers: 0 detected</span>
+                      <span>•</span>
+                      <span>Latency: &lt; 350ms</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleSimulateVoice}
+                        className="text-[11px] text-zinc-400 hover:text-zinc-200 underline font-mono"
+                      >
+                        [replay sample answer]
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-base font-bold text-zinc-100 font-heading">Strong Technical Delivery</h4>
-                      <p className="text-xs text-zinc-400 mt-0.5 font-mono">Evaluation completed in 240ms</p>
+                      <h4 className="text-base font-bold text-zinc-100 font-heading">
+                        Competency Evaluation: {currentScenario.label}
+                      </h4>
+                      <p className="text-xs text-zinc-400 mt-0.5 font-mono">Scored against verified staff engineer rubrics</p>
                     </div>
-                    <div className="text-right font-mono">
-                      <span className="text-2xl font-bold text-emerald-400">94</span>
-                      <span className="text-xs text-zinc-500">/100</span>
+                    
+                    {/* Animated SVG Radial Score Meter */}
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-12 h-12 flex items-center justify-center">
+                        <svg className="w-12 h-12 circle-progress" viewBox="0 0 36 36">
+                          <path
+                            className="text-zinc-800"
+                            strokeWidth="3"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            className="text-emerald-400"
+                            strokeDasharray="100, 100"
+                            strokeDashoffset={100 - currentScenario.score}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            stroke="currentColor"
+                            fill="none"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                        </svg>
+                        <span className="absolute font-mono text-xs font-bold text-emerald-400">
+                          {currentScenario.score}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <div className="grid sm:grid-cols-3 gap-3 pt-2">
                     <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Concept Mastery</span>
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Strongest Point</span>
                       <p className="text-xs text-zinc-300 leading-snug">
-                        Correctly identified Change Data Capture (CDC) rather than synchronous blocking writes.
+                        {currentScenario.goodPoint}
                       </p>
                     </div>
                     <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Cadence</span>
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Room to Improve</span>
                       <p className="text-xs text-zinc-300 leading-snug">
-                        138 words per minute. Confident pauses between system components.
+                        {currentScenario.improvePoint}
                       </p>
                     </div>
                     <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
-                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Pro Tip</span>
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Cadence Feedback</span>
                       <p className="text-xs text-zinc-300 leading-snug">
-                        Mention eventual consistency trade-offs when edge network lag spikes.
+                        {activeWpm} words per minute. Pacing is natural, steady, and clear.
                       </p>
                     </div>
                   </div>
@@ -350,7 +619,7 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
           </div>
         </motion.section>
 
-        {/* PUNCHY 3-PART CAPABILITY MATRIX (Replaces verbose process sections) */}
+        {/* PUNCHY CAPABILITY MATRIX */}
         <section className="py-20 border-t border-zinc-800/80 max-w-4xl mx-auto px-6">
           <div className="text-left mb-12">
             <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest block mb-1">
@@ -362,7 +631,6 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
           </div>
 
           <div className="grid sm:grid-cols-3 gap-5">
-            {/* Card 1 */}
             <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">
@@ -376,11 +644,10 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
                 </p>
               </div>
               <span className="mt-6 text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">
-                01 // conversational_engine
+                01 // voice_engine
               </span>
             </div>
 
-            {/* Card 2 */}
             <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">
@@ -398,7 +665,6 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
               </span>
             </div>
 
-            {/* Card 3 */}
             <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">

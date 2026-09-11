@@ -60,6 +60,41 @@ h1, h2, h3, h4, .font-heading, .font-display {
   border-color: #3f3f46;
 }
 
+/* Mouse-tracking interactive spotlight card */
+.spotlight-interactive {
+  position: relative;
+  background: #121215;
+  border: 1px solid #27272a;
+  border-radius: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+
+.spotlight-interactive::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    380px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+    rgba(255, 255, 255, 0.07),
+    transparent 50%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.spotlight-interactive:hover::before {
+  opacity: 1;
+}
+
+/* Radial SVG Score Gauge */
+.circle-progress {
+  transition: stroke-dashoffset 0.8s var(--ease-spring);
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
 .glass-panel {
   background: #0d0d10;
   border: 1px solid #27272a;

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { MockInterview as InterviewType, AnswerEvaluation } from '../types.js';
 import { api } from '../lib/api.js';
+import { sound } from '../lib/sound.js';
 
 interface MockInterviewProps {
   interviewId: string;
@@ -245,6 +246,7 @@ export default function MockInterview({ interviewId, onNavigate }: MockInterview
 
     if (isRecording) {
       // STOP recording
+      sound.playClick(800);
       isRecordingRef.current = false;
       setIsRecording(false);
       if (recognitionRef.current) {
@@ -258,6 +260,7 @@ export default function MockInterview({ interviewId, onNavigate }: MockInterview
     }
 
     // START recording with Web Speech API
+    sound.playMicStart();
     if (!speechSupported) {
       setSpeechError('Speech recognition is not supported in this browser. Please use Chrome/Edge or type directly.');
       return;
@@ -443,6 +446,7 @@ export default function MockInterview({ interviewId, onNavigate }: MockInterview
               setStreamingFeedback((prev) => prev + payload.token);
             }
             if (payload.done) {
+              sound.playChime();
               if (payload.interview) {
                 setInterview(payload.interview);
                 setLastEvaluation(payload.currentEvaluation || null);
