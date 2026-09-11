@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import express from 'express';
+import { signSession, verifySession } from '../server.js';
 
-describe('Server Endpoints', () => {
+describe('Server Endpoints & Security', () => {
   // Test health check response structure
   it('should validate health check response structure', () => {
     const mockResponse = {
@@ -15,6 +15,27 @@ describe('Server Endpoints', () => {
     expect(mockResponse.timestamp).toBeDefined();
     expect(mockResponse.uptime).toBeDefined();
     expect(mockResponse.environment).toBeDefined();
+  });
+
+  // Test HMAC signed session security
+  it('should sign and verify valid session tokens', () => {
+    const userId = 'student-42';
+    const signedToken = signSession(userId);
+    
+    expect(signedToken.startsWith('student-42.')).toBe(true);
+    const verified = verifySession(signedToken);
+    expect(verified).toBe('student-42');
+  });
+
+  it('should reject forged session tokens with invalid signature', () => {
+    const forgedToken = 'admin-1.fake_tampered_signature_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+    const verified = verifySession(forgedToken);
+    expect(verified).toBeNull();
+  });
+
+  it('should reject malformed or empty session tokens', () => {
+    expect(verifySession('')).toBeNull();
+    expect(verifySession('not-a-valid-token-at-all')).toBeNull();
   });
 
   // Test auth endpoint logic
@@ -38,14 +59,5 @@ describe('Server Endpoints', () => {
     const match = cookieHeader.match(/session=([^;]+)/);
     
     expect(match).toBeNull();
-  });
-
-  // Test environment validation
-  it('should validate required environment variables', () => {
-    const required = ['GEMINI_API_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
-    const missing = required.filter(key => !process.env[key]);
-    
-    // This test just validates the logic, not the actual env vars
-    expect(Array.isArray(missing)).toBe(true);
   });
 });

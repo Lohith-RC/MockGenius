@@ -23,6 +23,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { DashboardMetrics, StudentFeedback, ResumeTemplate } from '../types.js';
+import { api } from '../lib/api.js';
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -57,10 +58,10 @@ export default function AdminDashboard() {
     }).toString();
 
     Promise.all([
-      fetch('/api/admin/metrics').then((res) => res.json()),
-      fetch(`/api/admin/students?${query}`).then((res) => res.json()),
-      fetch('/api/admin/feedbacks').then((res) => res.json()),
-      fetch('/api/resume/templates').then((res) => res.json())
+      api.get('/api/admin/metrics').then((res) => res.json()),
+      api.get(`/api/admin/students?${query}`).then((res) => res.json()),
+      api.get('/api/admin/feedbacks').then((res) => res.json()),
+      api.get('/api/resume/templates').then((res) => res.json())
     ])
       .then(([metricsData, studentsData, feedbacksData, templatesData]) => {
         if (metricsData.success && metricsData.metrics) {
@@ -93,8 +94,8 @@ export default function AdminDashboard() {
 
     try {
       const [interviewsRes, resumeRes] = await Promise.all([
-        fetch(`/api/admin/student/${student.id}/interviews`).then(r => r.json()),
-        fetch(`/api/admin/student/${student.id}/resume`).then(r => r.json())
+        api.get(`/api/admin/student/${student.id}/interviews`).then(r => r.json()),
+        api.get(`/api/admin/student/${student.id}/resume`).then(r => r.json())
       ]);
       if (interviewsRes.success) setStudentInterviews(interviewsRes.interviews);
       if (resumeRes.success) setStudentResume(resumeRes.analysis);
@@ -109,11 +110,7 @@ export default function AdminDashboard() {
   const handleAddTemplate = async () => {
     if (!newTemplate.name || !newTemplate.fileContent) return;
     try {
-      const res = await fetch('/api/admin/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTemplate)
-      });
+      const res = await api.post('/api/admin/templates', newTemplate);
       const data = await res.json();
       if (data.success) {
         setTemplates([...templates, data.template]);
@@ -126,14 +123,10 @@ export default function AdminDashboard() {
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
     try {
-      const res = await fetch(`/api/admin/templates/${editingTemplate.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editingTemplate.name,
-          description: editingTemplate.description,
-          fileContent: editingTemplate.fileContent
-        })
+      const res = await api.put(`/api/admin/templates/${editingTemplate.id}`, {
+        name: editingTemplate.name,
+        description: editingTemplate.description,
+        fileContent: editingTemplate.fileContent
       });
       const data = await res.json();
       if (data.success) {
@@ -146,7 +139,7 @@ export default function AdminDashboard() {
   const handleDeleteTemplate = async (id: string) => {
     if (!confirm('Are you sure you want to delete this template?')) return;
     try {
-      const res = await fetch(`/api/admin/templates/${id}`, { method: 'DELETE' });
+      const res = await api.delete(`/api/admin/templates/${id}`);
       const data = await res.json();
       if (data.success) {
         setTemplates(templates.filter(t => t.id !== id));

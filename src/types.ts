@@ -25,6 +25,10 @@ export interface ResumeAnalysis {
   keywords: { keyword: string; match: boolean }[];
   improvementsToAdd: string[];
   improvementsToRemove: string[];
+  jdMatchScore?: number;
+  jobDescription?: string;
+  missingJDKeywords?: string[];
+  matchedJDKeywords?: string[];
 }
 
 export interface AnswerEvaluation {
@@ -35,6 +39,9 @@ export interface AnswerEvaluation {
   confidenceScore: number;
   grammar: string;
   clarity: string;
+  wordsPerMinute?: number;
+  fillerWordCount?: number;
+  answerDurationSeconds?: number;
 }
 
 export interface InterviewAnswer {
@@ -51,7 +58,9 @@ export interface MockInterview {
   skills: string[];
   experienceLevel: string;
   status: 'started' | 'completed';
+  interviewMode?: 'voice' | 'text';
   questions: string[];
+  followUpQuestions?: string[];
   currentQuestionIndex: number;
   answers: InterviewAnswer[];
   overallScore?: number;

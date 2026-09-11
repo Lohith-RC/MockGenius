@@ -9,10 +9,9 @@ import {
   LogOut,
   Users,
   PieChart,
-  ShieldAlert,
-  Sparkles,
   Menu,
-  X
+  X,
+  Code2
 } from 'lucide-react';
 import { User as UserType } from '../types.js';
 
@@ -31,9 +30,10 @@ export default function Sidebar({ user, currentView, onNavigate, onLogout }: Sid
     { view: 'student-dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { view: 'resume-analyzer', label: 'Resume Analyzer', icon: FileText },
     { view: 'interview-prep', label: 'Mock Interviews', icon: Video },
+    { view: 'code-sandbox', label: 'Code Lab', icon: Code2 },
     { view: 'templates', label: 'ATS Templates', icon: Download },
-    { view: 'profile', label: 'My Profile', icon: User },
-    { view: 'feedback', label: 'Share Feedback', icon: MessageSquare }
+    { view: 'profile', label: 'Profile', icon: User },
+    { view: 'feedback', label: 'Feedback', icon: MessageSquare }
   ];
 
   const adminLinks = [
@@ -51,43 +51,38 @@ export default function Sidebar({ user, currentView, onNavigate, onLogout }: Sid
 
   const sidebarContent = (
     <>
-      {/* Sidebar Top Header */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-900 space-x-3 bg-slate-950/60">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-violet-500/20">
-          <Sparkles className="w-4 h-4" />
-        </div>
+      {/* Brand Header */}
+      <div className="h-16 flex items-center px-6 border-b border-zinc-800/80 space-x-3 bg-[#09090b]">
+        <div className="w-2 h-2 rounded-full bg-emerald-400" />
         <div>
-          <span className="font-bold text-sm tracking-tight text-white block">
-            Interview<span className="text-indigo-400">AI</span>
+          <span className="font-heading font-bold text-sm text-zinc-100 tracking-tight block">
+            MockGenius
           </span>
-          <span className="text-[9px] text-indigo-300 uppercase tracking-widest font-semibold font-mono block">
-            {isAdmin ? 'Admin Portal' : 'Placement Co-Pilot'}
+          <span className="text-[10px] text-zinc-500 font-mono block">
+            {isAdmin ? 'Admin Portal' : 'Interview Workspace'}
           </span>
         </div>
       </div>
 
       {/* User Information Profile Box */}
-      <div className="p-4 border-b border-slate-900 bg-slate-900/10">
+      <div className="p-4 border-b border-zinc-800/80 bg-zinc-950/40">
         <div className="flex items-center space-x-3">
           <img
             src={user.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120'}
             alt={user.name}
-            className="w-10 h-10 rounded-full border border-indigo-500/30 object-cover"
+            className="w-9 h-9 rounded-full border border-zinc-800 object-cover"
           />
-          <div className="overflow-hidden">
-            <span className="block font-bold text-xs text-white truncate">{user.name}</span>
-            <span className="block text-[10px] text-slate-400 truncate mt-0.5">{user.email}</span>
-            <span className="inline-flex items-center space-x-1 mt-1 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 border border-violet-400/20 text-violet-400 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase">
-              {isAdmin ? 'ADMINISTRATOR' : (user.branch ? user.branch : 'SETUP PROFILE')}
-            </span>
+          <div className="overflow-hidden flex-1">
+            <span className="block font-medium text-xs text-zinc-200 truncate">{user.name}</span>
+            <span className="block text-[10px] text-zinc-500 truncate font-mono">{user.email}</span>
           </div>
         </div>
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-2 font-mono">
-          Core Navigation
+      <nav aria-label="Main Navigation" className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <span className="block text-[10px] font-mono uppercase tracking-wider text-zinc-600 px-3 mb-2">
+          Navigation
         </span>
 
         {activeLinks.map((link) => {
@@ -98,31 +93,30 @@ export default function Sidebar({ user, currentView, onNavigate, onLogout }: Sid
             <button
               key={link.view}
               onClick={() => handleNavigate(link.view)}
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`w-full group flex items-center space-x-3 px-3 py-2 rounded-md text-xs font-medium transition ${
                 isActive
-                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/20'
-                  : 'hover:bg-slate-900/60 text-slate-400 hover:text-slate-200'
+                  ? 'bg-zinc-800 text-zinc-100'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-zinc-100' : 'text-zinc-500 group-hover:text-zinc-300'}`} aria-hidden="true" />
               <span>{link.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Sidebar Footer / Action */}
-      <div className="p-4 border-t border-slate-900 bg-slate-950/60 space-y-3">
+      {/* Sidebar Footer */}
+      <div className="p-3 border-t border-zinc-800/80 bg-[#09090b]">
         <button
           onClick={onLogout}
-          className="w-full flex items-center space-x-3 px-3 py-2.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 text-slate-400 hover:text-red-400 rounded-xl text-xs font-semibold transition"
+          aria-label="Log Out of InterviewAI"
+          className="w-full flex items-center space-x-3 px-3 py-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60 rounded-md text-xs font-medium transition"
         >
-          <LogOut className="w-4 h-4" />
-          <span>Log Out</span>
+          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <span>Log out</span>
         </button>
-        <div className="text-center pt-2 border-t border-slate-900">
-          <p className="text-[9px] text-slate-600 font-medium">Built by Lohith & Trupti</p>
-        </div>
       </div>
     </>
   );
@@ -132,28 +126,29 @@ export default function Sidebar({ user, currentView, onNavigate, onLogout }: Sid
       {/* Mobile Hamburger Button */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 text-white flex items-center justify-center shadow-lg"
-        aria-label="Toggle sidebar"
+        className="lg:hidden fixed top-3 left-4 z-50 w-9 h-9 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-200 flex items-center justify-center shadow-sm"
+        aria-label={mobileOpen ? 'Close navigation sidebar' : 'Open navigation sidebar'}
+        aria-expanded={mobileOpen}
       >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {mobileOpen ? <X className="w-4 h-4" aria-hidden="true" /> : <Menu className="w-4 h-4" aria-hidden="true" />}
       </button>
 
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30"
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Desktop sidebar - always visible on lg+ */}
-      <aside className="hidden lg:flex w-64 bg-slate-950/80 backdrop-blur-lg border-r border-slate-900 text-slate-300 flex-col h-screen fixed top-0 left-0 z-40">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-60 bg-[#09090b] border-r border-zinc-800/80 text-zinc-300 flex-col h-screen fixed top-0 left-0 z-40">
         {sidebarContent}
       </aside>
 
-      {/* Mobile sidebar - slide in/out */}
+      {/* Mobile sidebar */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 w-64 bg-slate-950/95 backdrop-blur-lg border-r border-slate-900 text-slate-300 flex flex-col h-screen z-40 transform transition-transform duration-300 ease-out ${
+        className={`lg:hidden fixed top-0 left-0 w-60 bg-[#09090b] border-r border-zinc-800/80 text-zinc-300 flex flex-col h-screen z-40 transform transition-transform duration-200 ease-out ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Download, Copy, Check, FileText, Sparkles, LayoutGrid } from 'lucide-react';
+import { Download, Copy, Check, FileText } from 'lucide-react';
 import { ResumeTemplate } from '../types.js';
+import { api } from '../lib/api.js';
 
 export default function Templates() {
   const [templates, setTemplates] = useState<ResumeTemplate[]>([]);
@@ -9,7 +10,7 @@ export default function Templates() {
   const [selectedTemplate, setSelectedTemplate] = useState<ResumeTemplate | null>(null);
 
   useEffect(() => {
-    fetch('/api/resume/templates')
+    api.get('/api/resume/templates')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.templates) {
@@ -30,7 +31,7 @@ export default function Templates() {
   const handleDownload = async (template: ResumeTemplate) => {
     // Increment download on server
     try {
-      await fetch(`/api/resume/templates/${template.id}/download`, { method: 'POST' });
+      await api.post(`/api/resume/templates/${template.id}/download`);
       // Update local templates counter
       setTemplates((prev) =>
         prev.map((t) => (t.id === template.id ? { ...t, downloadCount: t.downloadCount + 1 } : t))
@@ -109,16 +110,17 @@ export default function Templates() {
                         e.stopPropagation();
                         handleCopy(template);
                       }}
+                      aria-label={`Copy ${template.name} markdown to clipboard`}
                       className="text-[10px] font-bold text-slate-300 bg-slate-900/60 hover:bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg transition flex items-center space-x-1"
                     >
                       {copiedId === template.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
                           <span className="text-emerald-400">Copied</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5" />
+                          <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                           <span>Copy Text</span>
                         </>
                       )}
@@ -129,9 +131,10 @@ export default function Templates() {
                         e.stopPropagation();
                         handleDownload(template);
                       }}
+                      aria-label={`Download ${template.name} text file`}
                       className="text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition flex items-center space-x-1"
                     >
-                      <Download className="w-3.5 h-3.5" />
+                      <Download className="w-3.5 h-3.5" aria-hidden="true" />
                       <span>Download .txt</span>
                     </button>
                   </div>

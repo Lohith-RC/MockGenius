@@ -7,9 +7,13 @@ import {
   XCircle,
   Sparkles,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Target,
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { ResumeAnalysis } from '../types.js';
+import { api } from '../lib/api.js';
 
 /**
  * Extract text from a PDF file using pdf.js loaded via CDN.
@@ -52,6 +56,7 @@ export default function ResumeAnalyzer() {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,11 +64,14 @@ export default function ResumeAnalyzer() {
 
   useEffect(() => {
     // Fetch active resume evaluation on load
-    fetch('/api/resume/my-analysis')
+    api.get('/api/resume/my-analysis')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.analysis) {
           setAnalysis(data.analysis);
+          if (data.analysis.jobDescription) {
+            setJobDescription(data.analysis.jobDescription);
+          }
         }
       })
       .catch((err) => console.error(err));
@@ -138,17 +146,20 @@ export default function ResumeAnalyzer() {
     setError(null);
 
     try {
-      const response = await fetch('/api/resume/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file ? file.name : 'Pasted_Resume_Text.pdf',
-          resumeText
-        })
-      });
+      const endpoint = jobDescription.trim() ? '/api/resume/upload-with-jd' : '/api/resume/upload';
+      const payload: any = {
+        fileName: file ? file.name : 'Pasted_Resume_Text.pdf',
+        resumeText
+      };
+      if (jobDescription.trim()) {
+        payload.jobDescription = jobDescription.trim();
+      }
+
+      const response = await api.post(endpoint, payload);
 
       if (!response.ok) {
-        throw new Error('Failed to parse and evaluate resume.');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || 'Failed to parse and evaluate resume.');
       }
 
       const data = await response.json();
@@ -168,6 +179,7 @@ export default function ResumeAnalyzer() {
   const handleReset = () => {
     setFile(null);
     setResumeText('');
+    setJobDescription('');
     setAnalysis(null);
   };
 
@@ -176,8 +188,10 @@ export default function ResumeAnalyzer() {
       {/* Introduction banner */}
       <div className="glass-panel p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="font-bold text-white text-sm font-display">ATS Optimizer & Advisor</h3>
-          <p className="text-xs text-slate-400">Scan skills density, structure layouts, detect inconsistencies, and generate optimal improvements powered by Gemini AI.</p>
+          <h3 className="font-bold text-white text-sm font-display">ATS Optimizer & Job Description Matcher</h3>
+          <p className="text-xs text-slate-400">
+            Scan keyword density, compare against target job descriptions, detect layout inconsistencies, and generate actionable engineering improvements.
+          </p>
         </div>
         <div className="flex space-x-2">
           {analysis && (
@@ -186,7 +200,7 @@ export default function ResumeAnalyzer() {
               className="text-xs border border-slate-700 hover:bg-slate-900 text-slate-300 font-semibold px-4 py-2 rounded-xl transition flex items-center space-x-1.5"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Scan New</span>
+              <span>Scan New Resume</span>
             </button>
           )}
         </div>
@@ -195,9 +209,9 @@ export default function ResumeAnalyzer() {
       {!analysis ? (
         <div className="grid lg:grid-cols-12 gap-8">
           {/* Upload Widget */}
-          <div className="lg:col-span-6 space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             <div className="glass-card rounded-2xl p-6 space-y-4">
-              <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider font-mono">Upload Document</h4>
+              <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider font-mono">1. Upload Document</h4>
 
               {/* Drag and Drop Box */}
               <div
@@ -205,7 +219,7 @@ export default function ResumeAnalyzer() {
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition ${
+                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition ${
                   dragActive ? 'border-indigo-500 bg-indigo-950/40' : 'border-slate-800 hover:border-slate-700'
                 }`}
                 onClick={() => document.getElementById('file-upload-input')?.click()}
@@ -217,15 +231,15 @@ export default function ResumeAnalyzer() {
                   accept=".pdf,.txt,.md"
                   onChange={handleFileChange}
                 />
-                <div className="flex flex-col items-center space-y-3">
-                  <div className="w-12 h-12 bg-slate-900/60 text-slate-400 flex items-center justify-center rounded-xl border border-slate-800">
-                    <Upload className="w-6 h-6 text-slate-400" />
+                <div className="flex flex-col items-center space-y-2.5">
+                  <div className="w-10 h-10 bg-slate-900/60 text-slate-400 flex items-center justify-center rounded-xl border border-slate-800">
+                    <Upload className="w-5 h-5 text-indigo-400" />
                   </div>
                   <div>
                     <span className="font-bold text-xs text-white block">
-                      {extractingPdf ? 'Extracting PDF text...' : file ? file.name : 'Select or drag & drop resume'}
+                      {extractingPdf ? 'Extracting PDF text...' : file ? file.name : 'Select or drag & drop resume file'}
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1 block">
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
                       Supports PDF (text extraction), TXT, or MD formats
                     </span>
                   </div>
@@ -248,8 +262,27 @@ export default function ResumeAnalyzer() {
                 <textarea
                   value={resumeText}
                   onChange={(e) => setResumeText(e.target.value)}
-                  placeholder="Paste raw skills, education history, and certifications here..."
-                  className="w-full h-44 p-3 border border-slate-800 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 leading-relaxed bg-slate-950/60 text-slate-100"
+                  placeholder="Paste raw skills, projects, and work history here..."
+                  className="w-full h-36 p-3 border border-slate-800 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 leading-relaxed bg-slate-950/60 text-slate-100 placeholder-slate-600"
+                />
+              </div>
+
+              {/* Target Job Description Section (JD Matcher) */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/60">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-300 flex items-center space-x-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>2. Target Job Description (Optional — Role Matching)</span>
+                  </label>
+                  <span className="text-[9px] font-mono font-bold bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded">
+                    JD Matcher
+                  </span>
+                </div>
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  placeholder="Paste requirements and responsibilities from a real job posting (e.g. Google, Amazon, Startup) to compute a direct match percentage and identify missing keywords..."
+                  className="w-full h-32 p-3 border border-slate-800 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 leading-relaxed bg-slate-950/60 text-slate-100 placeholder-slate-600"
                 />
               </div>
 
@@ -268,12 +301,12 @@ export default function ResumeAnalyzer() {
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Analyzing with Gemini AI...</span>
+                    <span>Analyzing Resume with Gemini AI...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>Run Resume Audit</span>
+                    <span>{jobDescription.trim() ? 'Run ATS & JD Match Audit' : 'Run General ATS Audit'}</span>
                   </>
                 )}
               </button>
@@ -281,17 +314,17 @@ export default function ResumeAnalyzer() {
           </div>
 
           {/* Guidelines Right Panel */}
-          <div className="lg:col-span-6 glass-card rounded-2xl p-6 space-y-6">
-            <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider font-mono">Resume Best Practices</h4>
+          <div className="lg:col-span-5 glass-card rounded-2xl p-6 space-y-6">
+            <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider font-mono">ATS & JD Placement Guidelines</h4>
             
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-xs">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center font-bold text-xs">
                   1
                 </div>
                 <div>
-                  <h5 className="font-bold text-xs text-white">Avoid Visual Elements</h5>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Graphics, charts, and complex columns look aesthetic but often confuse ATS parser scrapers. Use standard single-column layouts instead.</p>
+                  <h5 className="font-bold text-xs text-white">Target Job Keyword Alignment</h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Recruiting screeners prioritize candidates whose resume matches the specific tech stack in the job description.</p>
                 </div>
               </div>
 
@@ -300,8 +333,8 @@ export default function ResumeAnalyzer() {
                   2
                 </div>
                 <div>
-                  <h5 className="font-bold text-xs text-white">Match Keywords Density</h5>
-                  <p className="text-[10px] text-slate-400 mt-0.5">ATS screening engines look for explicit skills declarations. Check that technologies like SQL, TypeScript, and Docker are explicitly named.</p>
+                  <h5 className="font-bold text-xs text-white">Avoid Over-Designed Layouts</h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Complex multi-column designs and icons frequently corrupt ATS parsers. Stick to clean, single-column semantic sections.</p>
                 </div>
               </div>
 
@@ -310,18 +343,8 @@ export default function ResumeAnalyzer() {
                   3
                 </div>
                 <div>
-                  <h5 className="font-bold text-xs text-white">Use Action Verbs</h5>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Begin experience bullets with robust action keywords (e.g., Developed, Lead, Engineered, Optimized) rather than passive responsibility terms.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold text-xs">
-                  4
-                </div>
-                <div>
-                  <h5 className="font-bold text-xs text-white">Quantify Achievements</h5>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Include measurable impact metrics (e.g., "improved load time by 25%", "managed team of 4 engineers") to stand out.</p>
+                  <h5 className="font-bold text-xs text-white">Action Verbs & Quantitative Metrics</h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Start bullets with verbs (Engineered, Architected, Refactored) and back claims with measurable outcomes (e.g., 20% latency reduction).</p>
                 </div>
               </div>
             </div>
@@ -332,11 +355,11 @@ export default function ResumeAnalyzer() {
         <div className="grid lg:grid-cols-12 gap-8">
           {/* Top Score Callout Left */}
           <div className="lg:col-span-4 space-y-6">
-            {/* Score circle card */}
+            {/* General ATS Score card */}
             <div className="glass-card rounded-3xl p-6 text-center space-y-6 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent -z-10" />
 
-              <span className="text-[10px] font-bold text-slate-500 uppercase font-mono tracking-wider">Estimated Score</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase font-mono tracking-wider">General ATS Score</span>
 
               <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
                 <svg className="absolute w-full h-full transform -rotate-90">
@@ -370,6 +393,36 @@ export default function ResumeAnalyzer() {
                 </p>
               </div>
             </div>
+
+            {/* Job Description Match Card (if analyzed with JD) */}
+            {analysis.jdMatchScore !== undefined && (
+              <div className="glass-card rounded-3xl p-6 space-y-4 border border-indigo-500/30 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold text-white font-display">Target JD Match</span>
+                  </div>
+                  <span className="text-xl font-mono font-extrabold text-indigo-400">
+                    {analysis.jdMatchScore}%
+                  </span>
+                </div>
+
+                <div className="w-full bg-slate-950/80 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-500"
+                    style={{ width: `${analysis.jdMatchScore}%` }}
+                  />
+                </div>
+
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  {analysis.jdMatchScore >= 80
+                    ? '🎯 Outstanding fit! Your tech stack and experience align tightly with the target job posting.'
+                    : analysis.jdMatchScore >= 60
+                    ? 'Moderate match. Adding the missing keywords below will dramatically improve your screening chances.'
+                    : 'Significant mismatch. Tailor your resume to incorporate the key competencies requested by this employer.'}
+                </p>
+              </div>
+            )}
 
             {/* Missing sections */}
             {analysis.missingSections.length > 0 && (
@@ -409,10 +462,82 @@ export default function ResumeAnalyzer() {
 
           {/* Suggestions & Keywords Right */}
           <div className="lg:col-span-8 space-y-6">
+            {/* Target JD Keywords Comparison Panel */}
+            {analysis.jdMatchScore !== undefined && (
+              <div className="glass-card rounded-2xl p-6 space-y-5 border border-indigo-500/20">
+                <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Layers className="w-4 h-4 text-indigo-400" />
+                    <h4 className="font-bold text-white text-sm font-display">Target Job Keyword Gap Analysis</h4>
+                  </div>
+                  <span className="text-[10px] font-mono text-indigo-400 font-bold">JD Keyword Audit</span>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Matched JD Keywords */}
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Matched in Resume</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                        {analysis.matchedJDKeywords?.length || 0} Found
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.matchedJDKeywords && analysis.matchedJDKeywords.length > 0 ? (
+                        analysis.matchedJDKeywords.map((kw, i) => (
+                          <span
+                            key={i}
+                            className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono px-2 py-0.5 rounded-md font-semibold"
+                          >
+                            {kw}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-500 text-xs italic">None detected</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Missing JD Keywords */}
+                  <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-rose-400 flex items-center space-x-1.5">
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Missing from Resume</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-rose-300 font-bold">
+                        {analysis.missingJDKeywords?.length || 0} Missing
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.missingJDKeywords && analysis.missingJDKeywords.length > 0 ? (
+                        analysis.missingJDKeywords.map((kw, i) => (
+                          <span
+                            key={i}
+                            className="bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-mono px-2 py-0.5 rounded-md font-semibold"
+                          >
+                            + {kw}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-emerald-400 text-xs italic">All key JD skills matched!</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Actionable Suggestions */}
             <div className="glass-card rounded-2xl p-6 space-y-6">
               <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
                 <h4 className="font-bold text-white text-sm font-display">Actionable Placement Suggestions</h4>
-                <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full">AI Checklist</span>
+                <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/20 border border-indigo-500/30 px-2 py-0.5 rounded-full">
+                  AI Checklist
+                </span>
               </div>
 
               <div className="space-y-3">

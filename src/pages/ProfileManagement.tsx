@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Sparkles, CheckCircle } from 'lucide-react';
 import { User } from '../types.js';
+import { api } from '../lib/api.js';
 
 interface ProfileProps {
   user: User;
@@ -22,16 +23,12 @@ export default function ProfileManagement({ user, onProfileUpdate }: ProfileProp
     setMessage(null);
 
     try {
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branch,
-          skills,
-          projects,
-          targetRole,
-          experienceLevel
-        })
+      const response = await api.put('/api/profile', {
+        branch,
+        skills,
+        projects,
+        targetRole,
+        experienceLevel
       });
 
       if (!response.ok) {

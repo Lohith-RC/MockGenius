@@ -2,20 +2,45 @@ import { useState, useEffect } from 'react';
 import {
   FileText,
   Video,
-  Download,
-  CheckCircle,
   AlertCircle,
   ArrowRight,
-  TrendingUp,
   Award,
   Sparkles,
   Calendar
 } from 'lucide-react';
-import { User, ResumeAnalysis, MockInterview } from '../types.js';
+import { ResumeAnalysis, MockInterview, User } from '../types.js';
+import { api } from '../lib/api.js';
 
 interface StudentDashboardProps {
   user: User;
-  onNavigate: (view: string) => void;
+  onNavigate: (view: string, interviewId?: string) => void;
+}
+
+function AnimatedCounter({ value, duration = 900 }: { value: number | null; duration?: number }) {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    if (value === null || value === undefined) return;
+    let startTimestamp: number | null = null;
+    const startValue = 0;
+    const endValue = value;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(startValue + (endValue - startValue) * eased));
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    };
+
+    const animId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(animId);
+  }, [value, duration]);
+
+  if (value === null || value === undefined) return <span>--</span>;
+  return <span>{displayValue}</span>;
 }
 
 export default function StudentDashboard({ user, onNavigate }: StudentDashboardProps) {
@@ -26,8 +51,8 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
   useEffect(() => {
     // Fetch user resume analysis and interview history
     Promise.all([
-      fetch('/api/resume/my-analysis').then((res) => res.json()),
-      fetch('/api/interview/history').then((res) => res.json())
+      api.get('/api/resume/my-analysis').then((res) => res.json()),
+      api.get('/api/interview/history').then((res) => res.json())
     ])
       .then(([resumeData, interviewData]) => {
         if (resumeData.success && resumeData.analysis) {
@@ -70,10 +95,10 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)] bg-[#020617]">
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)] bg-[#09090b]">
         <div className="flex flex-col items-center space-y-3">
-          <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-slate-400 text-xs font-semibold">Consolidating profile indicators...</p>
+          <div className="w-8 h-8 border-2 border-zinc-700 border-t-zinc-200 rounded-full animate-spin" />
+          <p className="text-zinc-500 text-xs font-mono">loading_dashboard...</p>
         </div>
       </div>
     );
@@ -113,7 +138,7 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
             </div>
             <div className="flex items-baseline space-x-2 mt-4">
               <span className="text-5xl font-extrabold text-white tracking-tight">
-                {readinessScore || '--'}
+                <AnimatedCounter value={readinessScore} />
               </span>
               <span className="text-slate-500 text-xs font-semibold">/ 100</span>
             </div>
@@ -134,7 +159,7 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
             </div>
             <div className="flex items-baseline space-x-2 mt-4">
               <span className="text-5xl font-extrabold text-white tracking-tight">
-                {atsScore || '--'}
+                <AnimatedCounter value={atsScore} />
               </span>
               <span className="text-slate-500 text-xs font-semibold">/ 100</span>
             </div>
@@ -162,7 +187,7 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
             </div>
             <div className="flex items-baseline space-x-2 mt-4">
               <span className="text-5xl font-extrabold text-white tracking-tight">
-                {interviewScore || '--'}
+                <AnimatedCounter value={interviewScore} />
               </span>
               <span className="text-slate-500 text-xs font-semibold">/ 100</span>
             </div>
@@ -183,31 +208,30 @@ export default function StudentDashboard({ user, onNavigate }: StudentDashboardP
       </div>
 
       {/* Quick Launch Panel */}
-      <div className="bg-gradient-to-br from-slate-900 via-violet-950/30 to-slate-950 border border-slate-800/80 text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-violet-500/15 to-indigo-500/15 rounded-full blur-3xl -mr-24 -mt-24" />
-        <div className="relative max-w-2xl space-y-4">
-          <div className="inline-flex items-center space-x-1 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider font-mono">
-            <Sparkles className="w-3.5 h-3.5 animate-pulse text-violet-400" />
-            <span>AI Placement Co-Pilot</span>
+      <div className="border border-zinc-800 bg-[#111114] text-zinc-100 rounded-xl p-6 sm:p-8 relative overflow-hidden shadow-sm">
+        <div className="relative max-w-2xl space-y-3">
+          <div className="inline-flex items-center space-x-1.5 border border-zinc-800 bg-zinc-900 px-2.5 py-1 rounded-md text-[10px] font-mono text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>AI Interview Practice</span>
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-display">
-            Ready to test your technical interview competencies?
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 font-heading">
+            Ready to practice technical interview questions?
           </h3>
-          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-            Generate 5 customized interview questions based directly on your parsed resume, branch skills, and target career role. Get live granular evaluations for every answer.
+          <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">
+            Practice customized questions based on your resume, target role, and tech stack. Get instant feedback on your pacing, verbal fillers, and technical accuracy.
           </p>
           <div className="pt-2 flex flex-wrap gap-3">
             <button
               onClick={() => onNavigate('interview-prep')}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-bold px-5 py-3 rounded-xl transition shadow-md shadow-violet-600/20"
+              className="bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-semibold px-5 py-2.5 rounded-md transition shadow-sm font-heading"
             >
-              Start AI Mock Interview
+              Start Practice Session
             </button>
             <button
               onClick={() => onNavigate('resume-analyzer')}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-5 py-3 rounded-xl transition border border-slate-700"
+              className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900 text-zinc-300 text-xs font-medium px-5 py-2.5 rounded-md transition font-heading"
             >
-              Scan Resume ATS
+              Scan Resume
             </button>
           </div>
         </div>

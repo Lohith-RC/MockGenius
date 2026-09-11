@@ -1,3 +1,4 @@
+// ponytail: deprecated — replaced by database.ts (SQLite). Kept for reference.
 import fs from 'fs';
 import path from 'path';
 import { User, ResumeAnalysis, MockInterview, ResumeTemplate, StudentFeedback, DashboardMetrics } from '../types.js';

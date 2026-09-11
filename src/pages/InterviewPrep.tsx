@@ -12,6 +12,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { User, MockInterview } from '../types.js';
+import { api } from '../lib/api.js';
 
 interface InterviewPrepProps {
   user: User;
@@ -25,7 +26,7 @@ export default function InterviewPrep({ user, onNavigate }: InterviewPrepProps) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/interview/history')
+    api.get('/api/interview/history')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.history) {
@@ -46,10 +47,7 @@ export default function InterviewPrep({ user, onNavigate }: InterviewPrepProps) 
     setError(null);
 
     try {
-      const response = await fetch('/api/interview/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      const response = await api.post('/api/interview/generate');
 
       if (!response.ok) {
         throw new Error('Could not compile interview questions. Please try again.');

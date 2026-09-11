@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Star, MessageSquare, Send, CheckCircle } from 'lucide-react';
+import { api } from '../lib/api.js';
 
 export default function FeedbackForm() {
   const [category, setCategory] = useState<'interview' | 'resume' | 'general'>('interview');
@@ -16,11 +17,7 @@ export default function FeedbackForm() {
     setSuccess(false);
 
     try {
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, rating, comment })
-      });
+      const response = await api.post('/api/feedback', { category, rating, comment });
 
       if (response.ok) {
         setSuccess(true);

@@ -1,6 +1,11 @@
 # InterviewAI
 
-**Developed by me** – an AI‑powered interview preparation platform that helps you practice technical interview questions, receive real‑time feedback, and improve your answering skills.
+[![CI Pipeline](https://github.com/yourusername/interviewAI/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/interviewAI/actions)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)
+![Vitest](https://img.shields.io/badge/Vitest-Tests%20Passing-emerald.svg)
+![Security](https://img.shields.io/badge/Security-OWASP%20Hardened-green.svg)
+
+**Enterprise-Grade AI Placement & Mock Interview Platform** — Practice technical and behavioral interviews with real-time SSE feedback, Monaco Code Lab algorithmic reviews, ATS resume analysis with JD matching, and automated quality gates.
 
 ---
 

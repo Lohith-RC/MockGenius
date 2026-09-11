@@ -1,57 +1,48 @@
 import { useState, useEffect } from 'react';
-import { Shield, Sparkles, BookOpen, BarChart3, ArrowRight, Chrome, User, ShieldCheck } from 'lucide-react';
-import { motion } from 'motion/react';
+import {
+  ArrowRight,
+  Mic,
+  Volume2,
+  Play,
+  Terminal,
+  Code2,
+  FileText,
+  Activity
+} from 'lucide-react';
+import { motion, useScroll, useTransform, useSpring } from 'motion/react';
 import { User as UserType } from '../types.js';
+import { api } from '../lib/api.js';
 
 interface LandingPageProps {
   onLoginSuccess: (user: UserType) => void;
 }
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 32 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const slideRight = {
-  hidden: { opacity: 0, x: 48 },
-  visible: { opacity: 1, x: 0 },
-};
-
-const stagger = {
-  visible: {
-    transition: {
-      staggerChildren: 0.12,
-    },
-  },
-};
-
-const cardVariant = {
-  hidden: { opacity: 0, y: 24, scale: 0.97 },
-  visible: { opacity: 1, y: 0, scale: 1 },
-};
-
 export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState<'google' | 'student' | 'admin' | null>(null);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [oauthUrlInstructions, setOauthUrlInstructions] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'dialogue' | 'feedback'>('dialogue');
+
+  // Scroll-driven animation physics
+  const { scrollYProgress } = useScroll();
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
+
+  // Scroll-linked transforms
+  const heroScale = useTransform(smoothProgress, [0, 0.25], [1, 0.97]);
+  const heroOpacity = useTransform(smoothProgress, [0, 0.3], [1, 0.85]);
+  const previewScale = useTransform(smoothProgress, [0.05, 0.35], [0.95, 1]);
+  const previewY = useTransform(smoothProgress, [0.05, 0.35], [40, 0]);
 
   // Listen for login success event from popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Allow messages from same origin or run.app origins
       const origin = event.origin;
       if (!origin.endsWith('.run.app') && !origin.includes('localhost') && origin !== window.location.origin) {
         return;
       }
 
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        // Fetch newly logged-in user profile
-        fetch('/api/auth/me')
+        api.get('/api/auth/me')
           .then((res) => res.json())
           .then((data) => {
             if (data.authenticated && data.user) {
@@ -74,7 +65,7 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
     setOauthUrlInstructions(null);
 
     try {
-      const response = await fetch('/api/auth/url');
+      const response = await api.get('/api/auth/url');
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || errorData.instructions || 'OAuth initial connection failed');
@@ -82,7 +73,6 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
 
       const { url } = await response.json();
 
-      // Open Google authorization URL directly in popup
       const authWindow = window.open(
         url,
         'google_oauth_popup',
@@ -95,32 +85,25 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
       }
     } catch (err: any) {
       console.error('Google OAuth init error:', err);
-      // Give details of how to configure in Secrets if failing
       setOauthError(err.message);
       if (err.message.includes('Secrets')) {
         setOauthUrlInstructions(`To enable live Google OAuth:
 1. Open Google Cloud Console -> APIs & Credentials.
 2. Add Authorized Redirect URI: ${window.location.origin}/auth/callback
-3. Add Client ID & Secret in AI Studio under Settings > Secrets (keys: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET).`);
+3. Add Client ID & Secret in AI Studio under Settings > Secrets.`);
       }
       setLoading(null);
     }
   };
 
-  // Handle Demo login (instant preview helper)
+  // Handle Demo login
   const handleDemoLogin = async (role: 'student' | 'admin') => {
     setLoading(role);
     try {
-      const response = await fetch('/api/auth/demo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role })
-      });
-
+      const response = await api.post('/api/auth/demo', { role });
       if (!response.ok) {
         throw new Error('Demo login failed');
       }
-
       const data = await response.json();
       if (data.success && data.user) {
         onLoginSuccess(data.user);
@@ -134,402 +117,353 @@ export default function LandingPage({ onLoginSuccess }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-indigo-100">
-      {/* Animated Gradient Top Line */}
+    <div className="min-h-[100dvh] bg-[#09090b] text-[#f4f4f5] font-sans selection:bg-zinc-800 selection:text-white flex flex-col relative overflow-x-hidden">
+      {/* Scroll-Driven Top Progress Line */}
       <motion.div
-        className="h-1 bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-500 w-full"
-        initial={{ scaleX: 0, transformOrigin: 'left' }}
-        animate={{ scaleX: 1 }}
-        transition={{ duration: 1, ease: 'easeOut' }}
+        className="fixed top-0 left-0 right-0 h-[2px] bg-zinc-200 origin-left z-50 pointer-events-none"
+        style={{ scaleX: smoothProgress }}
       />
 
-      {/* Header */}
-      <motion.header
-        className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-50 transition-all"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-              <Sparkles className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <span className="font-bold text-xl tracking-tight text-slate-900">
-                Interview<span className="text-indigo-600">AI</span>
-              </span>
-              <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-semibold font-mono">
-                Placement Co-Pilot
-              </span>
-            </div>
+      {/* Minimal Sticky Nav */}
+      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-[#09090b]/85 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-heading font-bold text-lg text-zinc-100 tracking-tight">
+              MockGenius
+            </span>
+            <span className="hidden sm:inline-block text-[11px] text-zinc-500 font-mono">
+              / voice interview engine
+            </span>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => handleDemoLogin('student')}
-              className="hidden sm:inline-flex text-xs font-semibold px-4 py-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition"
+              disabled={loading !== null}
+              className="text-xs font-medium text-zinc-400 hover:text-zinc-100 transition px-3 py-1.5 rounded-md hover:bg-zinc-900 font-mono"
             >
-              Student Demo
-            </button>
-            <button
-              onClick={() => handleDemoLogin('admin')}
-              className="hidden sm:inline-flex text-xs font-semibold px-4 py-2 text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-lg transition"
-            >
-              Admin Demo
+              [demo]
             </button>
             <button
               onClick={handleGoogleLogin}
               disabled={loading !== null}
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-100"
+              className="text-xs font-semibold bg-zinc-100 hover:bg-white text-zinc-900 px-4 py-2 rounded-md transition active:scale-[0.98] shadow-sm flex items-center gap-1.5"
             >
-              <Chrome className="w-4 h-4" />
-              <span>Login</span>
+              {loading === 'google' ? 'Connecting...' : 'Sign in'}
+              <ArrowRight className="w-3 h-3 text-zinc-900" />
             </button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      {/* Main Hero */}
+      {/* Main Content with Scroll-Driven Scaling */}
       <main className="flex-1">
-        {/* Hero Section with Animated Background */}
-        <section className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-          {/* Animated Background Grid Pattern */}
-          <div className="absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.08)_0,transparent_50%)]" />
-            <motion.div
-              className="absolute top-20 left-10 w-72 h-72 bg-violet-300/20 rounded-full blur-3xl"
-              animate={{
-                x: [0, 30, 0],
-                y: [0, -20, 0],
-              }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.div
-              className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-300/20 rounded-full blur-3xl"
-              animate={{
-                x: [0, -40, 0],
-                y: [0, 30, 0],
-              }}
-              transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.div
-              className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-200/15 rounded-full blur-3xl"
-              animate={{
-                x: [-20, 20, -20],
-                y: [-30, 10, -30],
-              }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
-            <motion.div
-              className="lg:col-span-7 space-y-8 text-center lg:text-left"
-              variants={stagger}
-              initial="hidden"
-              animate="visible"
-            >
-              <motion.div
-                variants={fadeUp}
-                transition={{ duration: 0.5 }}
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200/60 text-violet-700 text-xs font-semibold px-4 py-2 rounded-full shadow-sm"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Next-Gen Placement Readiness Platform</span>
-              </motion.div>
-
-              <motion.h1
-                variants={fadeUp}
-                transition={{ duration: 0.6 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1]"
-              >
-                Supercharge Your{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-600">
-                  Placement Readiness
-                </span>{' '}
-                With AI Guidance.
-              </motion.h1>
-
-              <motion.p
-                variants={fadeUp}
-                transition={{ duration: 0.6 }}
-                className="text-lg text-slate-600 max-w-xl mx-auto lg:mx-0 leading-relaxed"
-              >
-                Scan your engineering resume for ATS scoring, optimize matching keywords, generate custom interview question repositories, and experience realistic mock interviews powered by Gemini AI.
-              </motion.p>
-
-              {/* Action Buttons Panel */}
-              <motion.div
-                variants={fadeUp}
-                transition={{ duration: 0.5 }}
-                className="pt-4 flex flex-col sm:flex-row justify-center lg:justify-start items-center gap-4"
-              >
-                <button
-                  onClick={handleGoogleLogin}
-                  disabled={loading !== null}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-3 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-bold px-8 py-4 rounded-xl transition shadow-lg shadow-slate-300 group"
-                >
-                  <Chrome className="w-5 h-5 text-violet-400" />
-                  <span>{loading === 'google' ? 'Connecting...' : 'Sign In with Google'}</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
-                </button>
-
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => handleDemoLogin('student')}
-                    disabled={loading !== null}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-2 border border-slate-300 hover:border-violet-500 hover:bg-violet-50 bg-white text-slate-700 font-semibold px-5 py-4 rounded-xl transition shadow-sm"
-                  >
-                    <User className="w-4 h-4 text-violet-600" />
-                    <span>{loading === 'student' ? 'Entering...' : 'Demo Student'}</span>
-                  </button>
-                  <button
-                    onClick={() => handleDemoLogin('admin')}
-                    disabled={loading !== null}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center space-x-2 border border-slate-300 hover:border-indigo-500 hover:bg-indigo-50 bg-white text-slate-700 font-semibold px-5 py-4 rounded-xl transition shadow-sm"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    <span>{loading === 'admin' ? 'Entering...' : 'Demo Admin'}</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Troubleshooting instructions */}
-              {oauthError && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ duration: 0.3 }}
-                  className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-left max-w-xl mx-auto lg:mx-0"
-                >
-                  <p className="text-xs font-semibold text-amber-800 flex items-center space-x-1.5 mb-1">
-                    <Shield className="w-4 h-4 flex-shrink-0" />
-                    <span>Configuration Notice / Error:</span>
-                  </p>
-                  <p className="text-xs text-amber-700 whitespace-pre-wrap">{oauthError}</p>
-                  {oauthUrlInstructions && (
-                    <div className="mt-2 pt-2 border-t border-amber-200">
-                      <p className="text-[10px] font-mono text-amber-900 bg-amber-100/50 p-2 rounded whitespace-pre-wrap">
-                        {oauthUrlInstructions}
-                      </p>
-                    </div>
-                  )}
-                  <p className="text-[10px] text-amber-600 mt-2 font-medium">
-                    <strong>Pro Tip:</strong> Click the "Demo Student" or "Demo Admin" button to instantly bypass auth and test all platform core modules immediately!
-                  </p>
-                </motion.div>
-              )}
-            </motion.div>
-
-            {/* Right Interactive Card / Graphics */}
-            <motion.div
-              className="lg:col-span-5 relative"
-              variants={slideRight}
-              initial="hidden"
-              animate="visible"
-              transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-tr from-violet-100 to-indigo-100 rounded-3xl blur-2xl opacity-70 -z-10 translate-x-4 translate-y-4" />
-
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl shadow-indigo-100/50 space-y-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-50 to-indigo-50 rounded-full blur-xl -mr-16 -mt-16 -z-10" />
-
-                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-red-400 to-pink-400" />
-                    <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400" />
-                    <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-green-400 to-emerald-400" />
-                  </div>
-                  <span className="text-xs font-semibold font-mono text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
-                    ATS Scanner V2.5
-                  </span>
-                </div>
-
-                {/* Score Dial Component */}
-                <div className="flex items-center space-x-6 bg-gradient-to-r from-slate-50 to-violet-50/30 p-4 rounded-2xl border border-slate-100">
-                  <div className="relative w-16 h-16 flex items-center justify-center">
-                    <svg className="absolute w-full h-full transform -rotate-90">
-                      <circle cx="32" cy="32" r="28" className="stroke-slate-200" strokeWidth="4" fill="none" />
-                      <motion.circle
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        className="stroke-violet-600"
-                        strokeWidth="4"
-                        fill="none"
-                        strokeDasharray="175"
-                        initial={{ strokeDashoffset: 175 }}
-                        animate={{ strokeDashoffset: 35 }}
-                        transition={{ duration: 1.2, delay: 0.8, ease: 'easeOut' }}
-                      />
-                    </svg>
-                    <span className="font-bold text-lg text-slate-800">80%</span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-800">Predicted ATS Score</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Missing: Summary Statement, Docker, Node.js</p>
-                  </div>
-                </div>
-
-                {/* Interview Preview Box */}
-                <motion.div
-                  className="space-y-3"
-                  variants={stagger}
-                  initial="hidden"
-                  animate="visible"
-                  transition={{ delay: 0.6 }}
-                >
-                  <motion.div
-                    variants={fadeIn}
-                    transition={{ duration: 0.4 }}
-                    className="text-xs font-bold uppercase text-slate-400 tracking-wider"
-                  >
-                    Gemini AI Interviewer
-                  </motion.div>
-                  <motion.div
-                    variants={fadeUp}
-                    transition={{ duration: 0.5 }}
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs p-3.5 rounded-2xl rounded-tl-none font-medium leading-relaxed shadow-md shadow-indigo-200"
-                  >
-                    "Explain horizontal versus vertical scaling in database architecture. Which does PostgreSQL support natively?"
-                  </motion.div>
-                  <motion.div
-                    variants={fadeUp}
-                    transition={{ duration: 0.5, delay: 0.15 }}
-                    className="bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 text-xs p-3.5 rounded-2xl rounded-tr-none font-mono ml-8 border border-slate-200"
-                  >
-                    "PostgreSQL supports vertical scaling natively by utilizing more RAM/CPU. For horizontal, we require sharding tools..."
-                  </motion.div>
-                </motion.div>
-
-                <div className="flex items-center justify-between pt-2 text-xs text-slate-500 border-t border-slate-100">
-                  <span className="flex items-center space-x-1">
-                    <Shield className="w-3.5 h-3.5 text-violet-600" />
-                    <span>GDPR Compliant</span>
-                  </span>
-                  <span className="font-mono text-violet-600 font-medium">Ready to Mock</span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Feature Grid */}
+        {/* Hero Section */}
         <motion.section
-          className="bg-white border-y border-slate-200 py-16 px-4 sm:px-6 lg:px-8"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
-          variants={stagger}
+          style={{ scale: heroScale, opacity: heroOpacity }}
+          className="pt-24 pb-16 md:pt-32 md:pb-20 px-6 max-w-4xl mx-auto text-center will-change-transform"
         >
-          <div className="max-w-7xl mx-auto space-y-12">
-            <motion.div variants={fadeUp} transition={{ duration: 0.5 }} className="text-center space-y-3 max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-                Placement Success Core Modules
-              </h2>
-              <p className="text-slate-600 text-sm">
-                Engineered specifically for engineering students to stand out in hyper-competitive selection rounds.
-              </p>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/60 text-zinc-400 text-xs font-mono mb-8"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>zero fluff • instant practice</span>
+          </motion.div>
 
-            <motion.div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8" variants={stagger}>
-              {/* Feature 1 */}
-              <motion.div
-                variants={cardVariant}
-                transition={{ duration: 0.45 }}
-                className="group p-6 bg-gradient-to-br from-slate-50 to-violet-50/30 rounded-2xl border border-slate-100 hover:border-violet-300 hover:shadow-lg hover:shadow-violet-100/50 transition-all duration-300 space-y-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white flex items-center justify-center shadow-md shadow-blue-200 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-lg text-slate-900">ATS Resume Analyzer</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Predict real-time ATS scoring thresholds, scan missing core headers, and receive instantaneous keyword optimization lists.
-                </p>
-              </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="font-heading text-4xl sm:text-6xl md:text-7xl font-bold tracking-[-0.04em] text-zinc-100 leading-[1.08]"
+          >
+            Talk through tech interviews <br className="hidden sm:inline" />
+            <span className="text-zinc-500 font-medium">before the stakes are real.</span>
+          </motion.h1>
 
-              {/* Feature 2 */}
-              <motion.div
-                variants={cardVariant}
-                transition={{ duration: 0.45 }}
-                className="group p-6 bg-gradient-to-br from-slate-50 to-indigo-50/30 rounded-2xl border border-slate-100 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100/50 transition-all duration-300 space-y-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-violet-200 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-lg text-slate-900">AI Mock Interviews</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Participate in live step-by-step Q&A sessions. Submit answers and get evaluated on accuracy, grammar, confidence, and clarity.
-                </p>
-              </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-6 text-base sm:text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed"
+          >
+            Real conversational questions with an AI that listens to your voice, asks follow-ups, and gives you instant feedback on your pacing, structure, and depth.
+          </motion.p>
 
-              {/* Feature 3 */}
-              <motion.div
-                variants={cardVariant}
-                transition={{ duration: 0.45 }}
-                className="group p-6 bg-gradient-to-br from-slate-50 to-indigo-50/30 rounded-2xl border border-slate-100 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100/50 transition-all duration-300 space-y-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-md shadow-indigo-200 group-hover:scale-110 transition-transform">
-                  <BarChart3 className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-lg text-slate-900">Placement Reports</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Earn multi-metric proficiency scores (Technical, Communication, Confidence) synthesized into professional PDF-friendly formats.
-                </p>
-              </motion.div>
+          {/* Action CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
+          >
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading !== null}
+              className="bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm px-6 py-3 rounded-lg transition active:scale-[0.98] shadow-sm flex items-center gap-2 font-heading"
+            >
+              <span>{loading === 'google' ? 'Connecting to Google...' : 'Start practicing with Google'}</span>
+              <ArrowRight className="w-4 h-4 text-zinc-900" />
+            </button>
 
-              {/* Feature 4 */}
-              <motion.div
-                variants={cardVariant}
-                transition={{ duration: 0.45 }}
-                className="group p-6 bg-gradient-to-br from-slate-50 to-cyan-50/30 rounded-2xl border border-slate-100 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-100/50 transition-all duration-300 space-y-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 text-white flex items-center justify-center shadow-md shadow-cyan-200 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-lg text-slate-900">Coordinator Admin Panel</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Provide administrators with centralized tools to filter student profiles, audit resume matching thresholds, and review mock reports.
-                </p>
-              </motion.div>
-            </motion.div>
-          </div>
+            <button
+              onClick={() => handleDemoLogin('student')}
+              disabled={loading !== null}
+              className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 hover:bg-zinc-900 text-zinc-300 font-medium text-sm px-5 py-3 rounded-lg transition active:scale-[0.98] font-heading"
+            >
+              {loading === 'student' ? 'Launching...' : 'Try 2-minute demo'}
+            </button>
+          </motion.div>
+
+          {/* OAuth Error Notification */}
+          {oauthError && (
+            <div className="mt-6 p-4 rounded-lg bg-red-950/30 border border-red-900/50 text-red-300 text-xs text-left max-w-md mx-auto">
+              <p className="font-semibold">{oauthError}</p>
+              {oauthUrlInstructions && (
+                <pre className="mt-2 p-2 bg-black/60 rounded font-mono text-[10px] whitespace-pre-wrap text-zinc-400">
+                  {oauthUrlInstructions}
+                </pre>
+              )}
+            </div>
+          )}
         </motion.section>
 
-        {/* Built By Section */}
+        {/* Scroll-Driven Interactive Product Window */}
         <motion.section
-          className="py-12 px-4 sm:px-6 lg:px-8"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.5 }}
-          variants={fadeUp}
-          transition={{ duration: 0.6 }}
+          style={{ scale: previewScale, y: previewY }}
+          className="px-6 max-w-4xl mx-auto mb-24 will-change-transform"
         >
-          <div className="max-w-7xl mx-auto text-center">
-            <div className="inline-flex items-center space-x-3 bg-gradient-to-r from-slate-100 to-violet-50 border border-slate-200 px-6 py-3 rounded-full">
-              <span className="text-xs text-slate-500 font-medium">Built by</span>
-              <span className="text-xs font-bold text-slate-800">Lohith</span>
-              <span className="text-slate-300">&</span>
-              <span className="text-xs font-bold text-slate-800">Trupti</span>
+          <div className="text-left border border-zinc-800 bg-[#121215] rounded-xl overflow-hidden shadow-2xl">
+            {/* macOS Chrome Header */}
+            <div className="px-5 py-3.5 border-b border-zinc-800/80 bg-zinc-950/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-700" />
+                <span className="ml-2 text-xs font-mono text-zinc-400 flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-zinc-500" />
+                  round_01 // system_design_redis_cache
+                </span>
+              </div>
+
+              {/* View Switcher */}
+              <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-md border border-zinc-800 text-[11px] font-mono">
+                <button
+                  onClick={() => setActiveTab('dialogue')}
+                  className={`px-2.5 py-1 rounded transition ${
+                    activeTab === 'dialogue' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  live_dialogue
+                </button>
+                <button
+                  onClick={() => setActiveTab('feedback')}
+                  className={`px-2.5 py-1 rounded transition ${
+                    activeTab === 'feedback' ? 'bg-zinc-800 text-zinc-100 font-semibold' : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  feedback_report
+                </button>
+              </div>
+            </div>
+
+            {/* Tabbed Content Area */}
+            <div className="p-6 sm:p-8">
+              {activeTab === 'dialogue' ? (
+                <div className="space-y-6">
+                  {/* Spoken Question */}
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-zinc-300">
+                      <Volume2 className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs font-mono text-zinc-500">AI Interviewer</span>
+                      <p className="text-sm sm:text-base text-zinc-100 font-medium leading-relaxed font-heading">
+                        "How would you handle cache invalidation across distributed edge nodes when high-frequency writes occur?"
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Candidate Spoken Answer */}
+                  <div className="flex gap-4 pl-4 sm:pl-8 border-l border-zinc-800">
+                    <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-emerald-400">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-zinc-400">Your Voice Stream</span>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-2 py-0.5 rounded">
+                          138 wpm • steady
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-zinc-300 font-mono leading-relaxed">
+                        "I'd implement a Cache-Aside pattern paired with an event-driven pub/sub bus like Kafka. When a write hits the primary database, a CDC event fires to invalidate the distributed edge caches asynchronously..."
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status Strip */}
+                  <div className="pt-2 flex items-center justify-between text-xs text-zinc-500 font-mono border-t border-zinc-800/80">
+                    <span>Fillers: 0 detected</span>
+                    <span>Elapsed: 01:18</span>
+                    <span className="text-emerald-400">Audio Ingestion: 48kHz</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-bold text-zinc-100 font-heading">Strong Technical Delivery</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5 font-mono">Evaluation completed in 240ms</p>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="text-2xl font-bold text-emerald-400">94</span>
+                      <span className="text-xs text-zinc-500">/100</span>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-3 gap-3 pt-2">
+                    <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Concept Mastery</span>
+                      <p className="text-xs text-zinc-300 leading-snug">
+                        Correctly identified Change Data Capture (CDC) rather than synchronous blocking writes.
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Cadence</span>
+                      <p className="text-xs text-zinc-300 leading-snug">
+                        138 words per minute. Confident pauses between system components.
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-950/50">
+                      <span className="text-[11px] font-mono text-zinc-400 block mb-1">Pro Tip</span>
+                      <p className="text-xs text-zinc-300 leading-snug">
+                        Mention eventual consistency trade-offs when edge network lag spikes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </motion.section>
+
+        {/* PUNCHY 3-PART CAPABILITY MATRIX (Replaces verbose process sections) */}
+        <section className="py-20 border-t border-zinc-800/80 max-w-4xl mx-auto px-6">
+          <div className="text-left mb-12">
+            <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest block mb-1">
+              Capabilities
+            </span>
+            <h2 className="font-heading text-2xl sm:text-4xl font-bold text-zinc-100 tracking-tight">
+              Everything you need. Zero fluff.
+            </h2>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-5">
+            {/* Card 1 */}
+            <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-zinc-100 tracking-tight">
+                  The Voice Simulator
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                  Real speech recognition with an AI that doesn't interrupt or judge. Practice framing architecture out loud until answers roll off your tongue.
+                </p>
+              </div>
+              <span className="mt-6 text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">
+                01 // conversational_engine
+              </span>
+            </div>
+
+            {/* Card 2 */}
+            <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-zinc-100 tracking-tight">
+                  Instant Telemetry
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                  Words-per-minute speedometers, verbal crutch counters ('um', 'like'), and technical completeness scores—delivered seconds after you stop speaking.
+                </p>
+              </div>
+              <span className="mt-6 text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">
+                02 // speech_analytics
+              </span>
+            </div>
+
+            {/* Card 3 */}
+            <div className="p-6 rounded-xl border border-zinc-800 bg-[#111114] hover:border-zinc-700 transition flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-300">
+                  <Code2 className="w-4 h-4" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-zinc-100 tracking-tight">
+                  Code Lab & ATS Match
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                  Integrated VS Code Monaco IDE with instant test-case execution, plus deep PDF resume parsing to find skill gaps before you send your application.
+                </p>
+              </div>
+              <span className="mt-6 text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">
+                03 // ide_and_resume
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Minimal Call to Action */}
+        <section className="py-24 border-t border-zinc-800/80 text-center px-6">
+          <div className="max-w-xl mx-auto space-y-4">
+            <h2 className="font-heading text-3xl sm:text-5xl font-bold text-zinc-100 tracking-[-0.03em]">
+              Ready to get in the room?
+            </h2>
+            <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
+              No audience, no judgment, and no stakes. Just a calm place to practice until you're ready.
+            </p>
+
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={handleGoogleLogin}
+                disabled={loading !== null}
+                className="bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-sm px-6 py-3 rounded-lg transition active:scale-[0.98] shadow-sm flex items-center gap-2 font-heading"
+              >
+                <span>Sign in with Google</span>
+                <ArrowRight className="w-4 h-4 text-zinc-900" />
+              </button>
+              <button
+                onClick={() => handleDemoLogin('student')}
+                disabled={loading !== null}
+                className="border border-zinc-800 hover:border-zinc-700 bg-zinc-900/40 text-zinc-300 font-medium text-sm px-5 py-3 rounded-lg transition font-heading"
+              >
+                Instant candidate sandbox
+              </button>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Footer */}
-      <motion.footer
-        className="bg-gradient-to-b from-slate-900 to-slate-950 text-slate-400 py-10 px-4 border-t border-slate-800 text-center text-xs"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.5 }}
-        variants={fadeIn}
-        transition={{ duration: 0.6 }}
-      >
-        <p>&copy; 2026 InterviewAI Placement Portal. Powered by Google Gemini AI Models. Strictly Google Authentication.</p>
-        <p className="mt-2 text-slate-500">Designed & Developed with passion for placement success.</p>
-      </motion.footer>
+      {/* Clean Minimalist Footer */}
+      <footer className="border-t border-zinc-800/60 py-8 px-6 text-xs text-zinc-500 font-mono">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span>MockGenius • Built for engineers preparing for their next role</span>
+          <div className="flex items-center gap-4 text-zinc-400">
+            <button onClick={() => handleDemoLogin('admin')} className="hover:text-zinc-200 transition">
+              [admin]
+            </button>
+            <span>•</span>
+            <button onClick={() => handleDemoLogin('student')} className="hover:text-zinc-200 transition">
+              [sandbox]
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

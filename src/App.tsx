@@ -1,16 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import LandingPage from './components/LandingPage.js';
 import Sidebar from './components/Sidebar.js';
 import Navbar from './components/Navbar.js';
 import StudentDashboard from './pages/StudentDashboard.js';
-import ResumeAnalyzer from './pages/ResumeAnalyzer.js';
-import InterviewPrep from './pages/InterviewPrep.js';
-import MockInterview from './pages/MockInterview.js';
-import Templates from './pages/Templates.js';
-import ProfileManagement from './pages/ProfileManagement.js';
-import FeedbackForm from './pages/FeedbackForm.js';
-import AdminDashboard from './pages/AdminDashboard.js';
 import { User } from './types.js';
+import { api } from './lib/api.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
+
+// Lazy-loaded pages for optimal performance and chunk-splitting
+const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer.js'));
+const InterviewPrep = lazy(() => import('./pages/InterviewPrep.js'));
+const MockInterview = lazy(() => import('./pages/MockInterview.js'));
+const Templates = lazy(() => import('./pages/Templates.js'));
+const ProfileManagement = lazy(() => import('./pages/ProfileManagement.js'));
+const FeedbackForm = lazy(() => import('./pages/FeedbackForm.js'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard.js'));
+const CodeSandbox = lazy(() => import('./pages/CodeSandbox.js'));
+
+function ViewFallback() {
+  return (
+    <div className="flex items-center justify-center h-[calc(100vh-8rem)] p-8">
+      <div className="w-full max-w-md p-6 glass-card rounded-2xl space-y-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+          <div className="space-y-1">
+            <div className="h-3 w-32 shimmer-box rounded" />
+            <div className="h-2 w-20 shimmer-box rounded" />
+          </div>
+        </div>
+        <div className="space-y-2 pt-2">
+          <div className="h-10 w-full shimmer-box rounded-xl" />
+          <div className="h-24 w-full shimmer-box rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -20,7 +47,7 @@ export default function App() {
 
   useEffect(() => {
     // Check if user session already exists
-    fetch('/api/auth/me')
+    api.get('/api/auth/me')
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error('Unauthorized');
@@ -55,7 +82,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await api.post('/api/auth/logout');
     } catch (err) {
       console.error('Logout error:', err);
     }
@@ -104,6 +131,8 @@ export default function App() {
         );
       case 'templates':
         return <Templates />;
+      case 'code-sandbox':
+        return <CodeSandbox />;
       case 'profile':
         return <ProfileManagement user={user} onProfileUpdate={(u) => setUser(u)} />;
       case 'feedback':
@@ -131,6 +160,8 @@ export default function App() {
         return 'Mock Assessment Gate';
       case 'mock-interview':
         return 'AI Interview Assessor';
+      case 'code-sandbox':
+        return 'Code Lab Sandbox';
       case 'templates':
         return 'ATS-vetted Resume Frameworks';
       case 'profile':
@@ -149,7 +180,15 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 flex">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex">
+      {/* a11y: Skip to main content link for keyboard and screen reader accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-800 focus:text-white focus:rounded-md focus:shadow-xl focus:ring-2 focus:ring-zinc-600 focus:outline-none text-xs font-bold transition-all"
+      >
+        Skip to main content
+      </a>
+
       {/* Persistent Left Sidebar Navigation */}
       <Sidebar
         user={user}
@@ -159,11 +198,15 @@ export default function App() {
       />
 
       {/* Main Content Layout Right Panel – responsive: no left padding on mobile */}
-      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-60 flex flex-col min-h-screen">
         <Navbar user={user} title={getViewTitle()} />
         
-        <main className="flex-1 bg-[#020617] overflow-y-auto">
-          {renderView()}
+        <main id="main-content" tabIndex={-1} className="flex-1 bg-[#09090b] overflow-y-auto focus:outline-none">
+          <ErrorBoundary fallbackTitle={`Error loading ${getViewTitle()}`}>
+            <Suspense fallback={<ViewFallback />}>
+              {renderView()}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
